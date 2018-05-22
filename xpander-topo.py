@@ -33,18 +33,13 @@ class XpanderTopo(Topo):
         """
         new_graph = nx.Graph()
 
-        nodes_old_to_new = dict() # old node -> [new nodes]
         old_edges = old_graph.edges()
         for u, v in old_edges:
             # create k copies of u and k copies of v
             # for every edge {u, v} in old graph
-            if u not in nodes_old_to_new.keys():
-                nodes_old_to_new[u] = [(str(u) + str(i)) for i in range(k)]
-            if v not in nodes_old_to_new.keys(): 
-                nodes_old_to_new[v] = [(str(v) + str(i)) for i in range(k)]
-            u_copies = nodes_old_to_new[u]
-            v_copies = nodes_old_to_new[v]
-            # todo: CHECK IF CAN ADD nodes that are already in graph
+            u_copies = [(str(u) + str(i)) for i in range(k)]
+            v_copies = [(str(v) + str(i)) for i in range(k)]
+            # TODO: check if ok to add nodes that are already in graph
             new_graph.add_nodes_from(u_copies)
             new_graph.add_nodes_from(v_copies)
 
