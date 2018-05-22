@@ -68,47 +68,5 @@ class XpanderTopo(Topo):
                 host = self.addHost("h" + switch + "-" + str(h))
                 self.addLink(host, switch)
 
-    def addHosts(self):
-        for i in range(0, self.nhost):
-            self.hnodes.append(self.addHost("h" + str(i)))
-
-
-    def addSwitches(self):
-        # Add core switches.
-        core = []
-        for i in range(0, self.ncore):
-            core.append(self.addSwitch("c" + str(i)))
-
-        self.snodes.append(core)
-
-        # Add edge switches.
-        for i in range(1, self.nlayer):
-            edge = []
-            for j in range(0, self.nedge):
-                edge.append(self.addSwitch("e" + str(i) + str(j)))
-            self.snodes.append(edge)
-
-
-    def addLinks(self):
-        # Add links between core and edge switches.
-        for i in range(0, self.nedge):
-            for j in range(0, self.nport / 2):
-                idx = i * (self.nport / 2) % self.ncore + j
-                self.addLink(self.snodes[1][i], self.snodes[0][idx])
-
-        # Add links between each layer of edge switches.
-        for i in range(1, self.nlayer - 1):
-            for j in range(0, self.nedge):
-                for k in range(0, self.nport / 2):
-                    tmp = self.nport / 2
-                    self.addLink(self.snodes[i][j],
-                                 self.snodes[i + 1][(j // tmp) * tmp + k])
-
-        # Add links between edge switches and hosts.
-        for i in range(0, self.nedge):
-            for j in range(0, self.nport / 2):
-                self.addLink(self.snodes[self.nlayer - 1][i],
-                             self.hnodes[self.nport / 2 * i + j])
-
 
 topos = { 'xpander' : (lambda: XpanderTopo()) }
