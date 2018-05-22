@@ -1,4 +1,4 @@
-# Xpander Topology
+# Simple Topology
 
 import os
 import math
@@ -21,17 +21,22 @@ class SimpleTopo(Topo):
         """
         # add switch per node in G
         for n in G.nodes():
+            n += 1
             self.addSwitch("s" + str(n))
         
         # connect all switches
         for n1, n2 in G.edges():
+            n1 += 1
+            n2 += 1
             s1 = "s" + str(n1)
             s2 = "s" + str(n2)
             self.addLink(s1, s2)
 
         # add one host per switch
         for n in G.nodes():
-            host = self.addHost("h" + str(n))
+            n += 1
+            mac = '00:00:00:00:00:0' + str(n)
+            host = self.addHost("h" + str(n), mac=mac)
             switch = "s" + str(n)
             self.addLink(host, switch)
 

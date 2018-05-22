@@ -3,12 +3,14 @@
 import os
 import math
 import random
+import json
 import networkx as nx
+from networkx.readwrite import json_graph
 from mininet.topo import Topo
 
 class XpanderTopo(Topo):
 
-    def __init__(self, n_hosts=12, n_hosts_per_rack=1, n_ports_per_switch=2, k_lift=2):
+    def __init__(self, n_hosts=6, n_hosts_per_rack=1, n_ports_per_switch=2, k_lift=2):
 
         self.n_hosts_per_rack = n_hosts_per_rack
         n_switches = int(n_hosts/n_hosts_per_rack);
@@ -26,6 +28,8 @@ class XpanderTopo(Topo):
 
         self.create_topo_from_graph(G)
 
+        self.dump_graph_to_file(G)
+
     def lift_graph(self, old_graph, k):
         """ Performs a k_lift on old_graph as described in section 3.1 of
         "Xpander: Towards Optimal-Performance Datacenters".
@@ -34,11 +38,21 @@ class XpanderTopo(Topo):
         new_graph = nx.Graph()
 
         old_edges = old_graph.edges()
+        next_sid = 2
+        old_nodes_to_new = {} # old nodes to their copies
         for u, v in old_edges:
             # create k copies of u and k copies of v
             # for every edge {u, v} in old graph
-            u_copies = [(str(u) + str(i)) for i in range(k)]
-            v_copies = [(str(v) + str(i)) for i in range(k)]
+            if u not in old_nodes_to_new.keys():
+                old_nodes_to_new[u] = [ sid 
+                    for sid in range(next_sid, next_sid + k)]
+                next_sid += k
+            if v not in old_nodes_to_new.keys():
+                old_nodes_to_new[v] = [ sid
+                    for sid in range(next_sid, next_sid + k)]
+                next_sid += k
+            u_copies = old_nodes_to_new[u]
+            v_copies = old_nodes_to_new[v]
             # TODO: check if ok to add nodes that are already in graph
             new_graph.add_nodes_from(u_copies)
             new_graph.add_nodes_from(v_copies)
@@ -56,17 +70,24 @@ class XpanderTopo(Topo):
         """
         # add top of rack switch per node in G
         for n in G.nodes():
-            self.addSwitch(n)
+            self.addSwitch(str(n))
         
         # connect all top of rack switches
         for n1, n2 in G.edges():
-            self.addLink(n1, n2)
+            self.addLink(str(n1), str(n2), port1=n2, port2=n1)
 
         # add hosts for each switch
-        for switch in G.nodes():
+        for n in G.nodes():
             for h in range(self.n_hosts_per_rack):
-                host = self.addHost("h" + switch + "-" + str(h))
-                self.addLink(host, switch)
+                mac = '%s:00:00:00:00:%s' % (str(n).zfill(2), str(h).zfill(2))
+                ip = '10.0.0.%s' % str(n)
+                host = self.addHost("h" + str(n) + "_" + str(h), mac=mac, ip=ip)
+                # WARNING: this will break if we try to attach more hosts per switch
+                self.addLink(host, str(n), port1=1025, port2=1)
 
+    def dump_graph_to_file(self, G):
+        adj_data = json_graph.adjacency_data(G)
+        with open('graph.json', 'w') as fp:
+            json.dump(adj_data, fp)
 
 topos = { 'xpander' : (lambda: XpanderTopo()) }

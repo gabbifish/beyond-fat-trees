@@ -24,9 +24,32 @@ It's roughly similar to the one Brandon Heller did for NOX.
 from pox.core import core
 import pox.openflow.libopenflow_01 as of
 
+import json
+import itertools
+import networkx as nx
+from networkx.readwrite import json_graph
+
 log = core.getLogger()
 
+G = None
+with open('pox/ext/graph.json', 'r') as fp:
+  data = json.load(fp)
+  G = json_graph.adjacency_graph(data)
 
+def ecmp(source, target, graph=G, k=8):
+  """
+  Returns list of paths according to ecmp algorithm
+  """
+  return list(itertools.islice(
+      nx.all_shortest_paths(graph, source, target), k))
+
+def mac_to_dpid(mac):
+  parts = [int(x) for x in str(mac).split(':')]
+  return parts[0]
+
+def ip_to_dpid(ip):
+  parts = [int(x) for x in str(ip).split('.')]
+  return parts[-1]
 
 class Tutorial (object):
   """
@@ -40,6 +63,10 @@ class Tutorial (object):
 
     # This binds our PacketIn event listener
     connection.addListeners(self)
+
+    self.dpid = None
+    if self.dpid is None:
+      self.dpid = connection.dpid
 
     # Use this table to keep track of which ethernet address is on
     # which switch port (keys are MACs, values are ports).
@@ -77,29 +104,44 @@ class Tutorial (object):
     # implementation would check that we got the full data before
     # sending it (len(packet_in.data) should be == packet_in.total_len)).
 
-
   def act_like_switch (self, packet, packet_in):
     """
     Implement switch-like behavior.
     """
 
-    """ # DELETE THIS LINE TO START WORKING ON THIS (AND THE ONE BELOW!) #
-
-    # Here's some psuedocode to start you off implementing a learning
-    # switch.  You'll need to rewrite it as real Python code.
-
     # Learn the port for the source MAC
-    self.mac_to_port ... <add or update entry>
+    print "packet arrived from MAC", packet.src, "on switch", self.dpid, "port", packet_in.in_port
+    self.mac_to_port[packet.src] = packet_in.in_port
 
-    if the port associated with the destination MAC of the packet is known:
+    # arpp = packet.find('arp')
+    # if arpp:
+    #   print "arp packet -> flooding out all ports"
+    #   self.resend_packet(packet_in, of.OFPP_ALL)
+    #   return
+
+    ipp = packet.find('ipv4')
+    if ipp:
+      print "ip packet with src", ipp.srcip, "and dst", ipp.dstip
+
+    # If we know the out port for the mac destination
+    if packet.dst in self.mac_to_port:
+      print "found mac destination in map"
+      out_port = self.mac_to_port[packet.dst]
+      
+      # drop packet if it should go out the same port it arrived on
+      if out_port == packet_in.in_port:
+        print "out_port is the same as in_port... dropping packet"
+        return
+
       # Send packet out the associated port
-      self.resend_packet(packet_in, ...)
+      print "sending packet out port", out_port
+      self.resend_packet(packet_in, out_port)
 
       # Once you have the above working, try pushing a flow entry
       # instead of resending the packet (comment out the above and
       # uncomment and complete the below.)
 
-      log.debug("Installing flow...")
+      #log.debug("Installing flow...")
       # Maybe the log statement should have source/destination/port?
 
       #msg = of.ofp_flow_mod()
@@ -113,11 +155,29 @@ class Tutorial (object):
 
     else:
       # Flood the packet out everything but the input port
-      # This part looks familiar, right?
+      print 'flooding packet'
       self.resend_packet(packet_in, of.OFPP_ALL)
 
-    """ # DELETE THIS LINE TO START WORKING ON THIS #
+  def route_packet (self, packet, packet_in):
+      # Get destination IP address of packet
+      ipdst = None
+      arpp = packet.find('arp')
+      if arpp:
+        ipdst = arpp.protodst
+      ipp = packet.find('ipv4')
+      if ipp:
+        ipdst = ipp.dstip
 
+      # Forward packet to next hop
+      target_id = ip_to_dpid(ipdst)
+      if self.dpid == target_id:
+        # packet dest is host attached to this id
+        # hosts are attached to their switch via port 1, so send out port 1
+        self.resend_packet(packet_in, 1)
+      else:
+        path = ecmp(self.dpid, target_id, k=1)[0]
+        next_hop = path[1]
+        self.resend_packet(packet_in, next_hop)
 
   def _handle_PacketIn (self, event):
     """
@@ -131,15 +191,17 @@ class Tutorial (object):
 
     packet_in = event.ofp # The actual ofp_packet_in message.
 
-    # Comment out the following line and uncomment the one after
-    # when starting the exercise.
-    print "Src: " + str(packet.src)
-    print "Dest: " + str(packet.dst)
-    print "Event port: " + str(event.port)
-    self.act_like_hub(packet, packet_in)
-    log.info("packet in")
-    #self.act_like_switch(packet, packet_in)
-
+    ipv6p = packet.find('ipv6')
+    if not ipv6p:
+      print "Src: " + str(packet.src)
+      print "Dest: " + str(packet.dst)
+      print "Event port: " + str(event.port)
+      #self.act_like_hub(packet, packet_in)
+      log.info("packet in")
+      print "event.connection.dpid"
+      print event.connection.dpid
+      #self.act_like_switch(packet, packet_in)
+      self.route_packet(packet, packet_in)
 
 
 def launch ():
@@ -147,6 +209,7 @@ def launch ():
   Starts the component
   """
   def start_switch (event):
+    log.info("switch %s has come up" % (event.dpid))
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
   core.openflow.addListenerByName("ConnectionUp", start_switch)
