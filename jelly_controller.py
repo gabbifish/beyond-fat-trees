@@ -45,6 +45,12 @@ flowlet_map = {}
 # is greater than FLOWLET_DELTA_MS, then start a new flowlet
 FLOWLET_DELTA_MS = 50
 
+# the routing strategy to use
+# can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
+routing_strategy = 'HYB'
+
+Q_THRESH = 100000
+
 G = None
 with open('pox/ext/graph.json', 'r') as fp:
   data = json.load(fp)
@@ -75,6 +81,26 @@ def flow_hash(packet):
     hash_input[1] = ip.dstip.toUnsigned()
     return crc32(pack('LL', *hash_input))
   return 0
+
+def get_path(source, target, routing_alg='ecmp', G=G):
+  # NOTE: routing_alg can be either 'vlb' or 'ecmp'
+  if routing_alg == 'ecmp':
+    paths = ecmp(source, target)
+    return random.choice(paths)
+  if routing_alg == 'vlb':
+    # choose a random intermediary node to go to first
+    nodes = G.nodes()
+    nodes.remove(source)
+    intermediate_node = random.choice(nodes)
+
+    # get path to that node
+    path = random.choice(ecmp(source, intermediate_node))
+
+    # then go on a shortest path from that intermediary node to the dest node
+    path2 = random.choice(ecmp(intermediate_node, target))
+    path.extend(path2)
+
+    return path
 
 class Tutorial (object):
   """
@@ -214,10 +240,9 @@ class Tutorial (object):
       if fhash not in flowlet_map:
         # this is the first time we are seeing this flow
         # update map with path
-        paths = ecmp(self.dpid, target_id, k=8)
-        path_chosen = random.choice(paths)
+        path = get_path(self.dpid, target_id, 'ecmp')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
-        flowlet_map[fhash] = (datetime.now(), ipp.iplen, path_chosen)
+        flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
 
       elif packet_in.in_port == 1:
         # this packet was just received from a host
@@ -227,8 +252,10 @@ class Tutorial (object):
         
         if old_time + timedelta(milliseconds=FLOWLET_DELTA_MS) > new_time:
           # start a new flowlet and choose a different path
-          paths = ecmp(self.dpid, target_id, k=8)
-          path = random.choice(paths)
+          routing_alg = 'ecmp'
+          if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
+            routing_alg = 'vlb'
+          path = get_path(self.dpid, target_id, routing_alg)
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
 
