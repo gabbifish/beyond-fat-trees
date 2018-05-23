@@ -22,14 +22,28 @@ It's roughly similar to the one Brandon Heller did for NOX.
 """
 
 from pox.core import core
+from pox.lib.packet.ipv4 import ipv4
 import pox.openflow.libopenflow_01 as of
 
 import json
 import itertools
+import random
+from datetime import datetime, timedelta
+from zlib import crc32
+from struct import pack
 import networkx as nx
 from networkx.readwrite import json_graph
 
 log = core.getLogger()
+
+# flow_hash of packet -> (time_last_pkt_seen, nbytes_sent, path)
+# time_last_pkt_seen is for flowlet switching
+# nbytes_sent is for switching from ECMP to VLB
+flowlet_map = {}
+
+# if time between packets entering network from same flow
+# is greater than FLOWLET_DELTA_MS, then start a new flowlet
+FLOWLET_DELTA_MS = 50
 
 G = None
 with open('pox/ext/graph.json', 'r') as fp:
@@ -50,6 +64,17 @@ def mac_to_dpid(mac):
 def ip_to_dpid(ip):
   parts = [int(x) for x in str(ip).split('.')]
   return parts[-1]
+
+# Adapted from ripl-pox source code
+def flow_hash(packet):
+  "Return an 2-tuple hash for TCP/IP packets, otherwise 0."
+  hash_input = [0] * 2
+  if isinstance(packet.next, ipv4):
+    ip = packet.next
+    hash_input[0] = ip.srcip.toUnsigned()
+    hash_input[1] = ip.dstip.toUnsigned()
+    return crc32(pack('LL', *hash_input))
+  return 0
 
 class Tutorial (object):
   """
@@ -168,16 +193,48 @@ class Tutorial (object):
       if ipp:
         ipdst = ipp.dstip
 
-      # Forward packet to next hop
+      
+      ##### Forward packet to next hop #####
+      
       target_id = ip_to_dpid(ipdst)
       if self.dpid == target_id:
         # packet dest is host attached to this id
         # hosts are attached to their switch via port 1, so send out port 1
         self.resend_packet(packet_in, 1)
-      else:
+        return
+
+      # send arp packets along shortest path
+      if arpp:
         path = ecmp(self.dpid, target_id, k=1)[0]
         next_hop = path[1]
         self.resend_packet(packet_in, next_hop)
+        return;
+      
+      fhash = flow_hash(packet)
+      if fhash not in flowlet_map:
+        # this is the first time we are seeing this flow
+        # update map with path
+        paths = ecmp(self.dpid, target_id, k=8)
+        path_chosen = random.choice(paths)
+        # fhash -> (time_last_pkt_seen, nbytes_sent, path)
+        flowlet_map[fhash] = (datetime.now(), ipp.iplen, path_chosen)
+
+      elif packet_in.in_port == 1:
+        # this packet was just received from a host
+        # update time_last_pkt_seen and nbytes_sent
+        (old_time, nbytes_sent, path) = flowlet_map[fhash]
+        new_time = datetime.now()
+        
+        if old_time + timedelta(milliseconds=FLOWLET_DELTA_MS) > new_time:
+          # start a new flowlet and choose a different path
+          paths = ecmp(self.dpid, target_id, k=8)
+          path = random.choice(paths)
+
+        flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
+
+      path = flowlet_map[fhash][2]
+      next_hop_id = path[path.index(self.dpid) + 1]
+      self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
     """
