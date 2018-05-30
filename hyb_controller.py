@@ -42,8 +42,8 @@ log = core.getLogger()
 flowlet_map = {}
 
 # if time between packets entering network from same flow
-# is greater than FLOWLET_DELTA_MS, then start a new flowlet
-FLOWLET_DELTA_MS = 50
+# is greater than FLOWLET_DELTA_MICROSEC, then start a new flowlet
+FLOWLET_DELTA_MICROSEC = 50
 
 # the routing strategy to use
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
@@ -310,7 +310,7 @@ class Tutorial (object):
         (old_time, nbytes_sent, path) = flowlet_map[fhash]
         new_time = datetime.now()
         
-        if old_time + timedelta(milliseconds=FLOWLET_DELTA_MS) > new_time:
+        if new_time > old_time + timedelta(microseconds=FLOWLET_DELTA_MICROSEC):
           # start a new flowlet and choose a different path
           routing_alg = 'ecmp'
           if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
