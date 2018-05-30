@@ -27,7 +27,7 @@ from pox.ext.util import *
 
 class XpanderTopo(Topo):
 
-    def __init__(self, n_hosts=6, n_hosts_per_rack=1, n_ports_per_switch=2, k_lift=2):
+    def __init__(self, n_hosts=12, n_hosts_per_rack=2, n_ports_per_switch=2, k_lift=2):
 
         self.n_hosts_per_rack = n_hosts_per_rack
         n_switches = int(n_hosts/n_hosts_per_rack)
@@ -55,7 +55,7 @@ class XpanderTopo(Topo):
         new_graph = nx.Graph()
 
         old_edges = old_graph.edges()
-        next_sid = 2
+        next_sid = self.n_hosts_per_rack + 1
         old_nodes_to_new = {} # old nodes to their copies
         for u, v in old_edges:
             # create k copies of u and k copies of v
@@ -95,12 +95,11 @@ class XpanderTopo(Topo):
 
         # add hosts for each switch
         for n in G.nodes():
-            for h in range(self.n_hosts_per_rack):
+            for h in range(1, self.n_hosts_per_rack+1):
                 mac = '%s:00:00:00:00:%s' % (str(n).zfill(2), str(h).zfill(2))
-                ip = '10.0.0.%s' % str(n)
+                ip = '10.0.%d.%d' % (n, h)
                 host = self.addHost("h" + str(n) + "_" + str(h), mac=mac, ip=ip)
-                # WARNING: this will break if we try to attach more hosts per switch
-                self.addLink(host, str(n), port1=1025, port2=1)
+                self.addLink(host, str(n), port1=1025, port2=h)
 
     def dump_graph_to_file(self, G):
         filename = 'graph.json'

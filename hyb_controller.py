@@ -117,11 +117,11 @@ def vlb(source, target, graph=G):
   
   return vlb_paths[(source, intermediate_node, target)]
 
-def mac_to_dpid(mac):
-  parts = [int(x) for x in str(mac).split(':')]
-  return parts[0]
+def ip_to_switch_id(ip):
+  parts = [int(x) for x in str(ip).split('.')]
+  return parts[-2]
 
-def ip_to_dpid(ip):
+def ip_to_host_id(ip):
   parts = [int(x) for x in str(ip).split('.')]
   return parts[-1]
 
@@ -276,12 +276,13 @@ class Tutorial (object):
       
       ##### Forward packet to next hop #####
       
-      target_id = ip_to_dpid(ipdst)
+      target_id = ip_to_switch_id(ipdst)
       if self.dpid == target_id:
         # packet dest is host attached to this id
         # hosts are attached to their switch via port 1, so send out port 1
         log.info("target host is attached to this switch")
-        self.resend_packet(packet_in, 1)
+        host_id = ip_to_host_id(ipdst)
+        self.resend_packet(packet_in, host_id)
         return
 
       # send arp packets along shortest path
