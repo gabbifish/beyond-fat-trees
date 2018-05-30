@@ -3,11 +3,18 @@ import os
 
 POXDIR = os.getcwd() + '/../..'
 
-class JELLYPOX( Controller ):
+class ECMP( Controller ):
     def __init__( self, name, cdir=POXDIR,
-                  command='python pox.py', cargs=('log --file=jelly.log,w openflow.of_01 --port=%s ext.jelly_controller' ),
+                  command='python pox.py', cargs=('log --file=jelly.log,w openflow.of_01 --port=%s ext.ecmp_controller' ),
                   **kwargs ):
         Controller.__init__( self, name, cdir=cdir,
                              command=command,
                              cargs=cargs, **kwargs )
-controllers={ 'jelly': JELLYPOX }
+class HYB( Controller ):
+    def __init__( self, name, cdir=POXDIR,
+                  command='python pox.py', cargs=('log --file=jelly.log,w openflow.of_01 --port=%s ext.hyb_controller' ),
+                  **kwargs ):
+        Controller.__init__( self, name, cdir=cdir,
+                             command=command,
+                             cargs=cargs, **kwargs )
+controllers={ 'hyb': HYB, 'ecmp': ECMP }

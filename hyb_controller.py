@@ -290,7 +290,7 @@ class Tutorial (object):
         next_hop = path[1]
         log.info("arp")
         self.resend_packet(packet_in, next_hop)
-        return;
+        return
 
       print "Src: " + str(packet.src)
       print "Dest: " + str(packet.dst)

@@ -23,7 +23,7 @@ from pox.ext.jelly_pox import HYB
 from subprocess import Popen, PIPE
 from time import sleep
 import itertools
-import exp_util as util
+from pox.ext.util import *
 
 class XpanderTopo(Topo):
 
@@ -118,11 +118,11 @@ def experiment_active_server(net):
     
     print "Running TCP 1-flow experiment on jellyfish"
     for i in range(0, num_runs):
-        util.iperf_test(net.hosts, "ecmp_1flow", i)
+        iperf_test(net.hosts, "ecmp_1flow", i)
 
     print "Running TCP 8-flow experiment on jellyfish"
     for i in range(0, num_runs):
-        util.iperf_test(net.hosts, "ecmp_8flow", i)
+        iperf_test(net.hosts, "ecmp_8flow", i)
    
     print "Done with active server experiment for fct"
     net.stop()
@@ -137,11 +137,11 @@ def experiment_lambda(net):
     
     print "Running TCP 1-flow experiment on jellyfish"
     for i in range(0, num_runs):
-        util.iperf_test(net.hosts, "ecmp_1flow", i)
+        iperf_test(net.hosts, "ecmp_1flow", i)
 
     print "Running TCP 8-flow experiment on jellyfish"
     for i in range(0, num_runs):
-        util.iperf_test(net.hosts, "ecmp_8flow", i)
+        iperf_test(net.hosts, "ecmp_8flow", i)
    
     print "Done with active server experiment for fct"
     net.stop()
