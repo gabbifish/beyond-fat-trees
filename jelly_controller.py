@@ -56,7 +56,8 @@ routing_strategy = 'HYB'
 Q_THRESH = 0
 
 G = None
-with open('pox/ext/graph.json', 'r') as fp:
+filename = 'pox/ext/graph.json'
+with open(filename, 'r') as fp:
   data = json.load(fp)
   G = json_graph.adjacency_graph(data)
 
@@ -66,6 +67,59 @@ def ecmp(source, target, graph=G, k=8):
   """
   return list(itertools.islice(
       nx.all_shortest_paths(graph, source, target), k))
+
+# (src, intermediate, dst) -> physical path
+vlb_paths = {}
+
+def bfs(src, dst, g, visited):
+  q = []
+  q.append([src])
+
+  while len(q) > 0:
+    path = q.pop(0) # remove first path in queue
+    n = path[len(path) - 1] # get last node in path
+
+    if n not in visited:
+      visited.add(n)
+      for neighbor in G.neighbors(n):
+        new_path = path + [neighbor]
+        if neighbor == dst:
+          return new_path
+        q.append(new_path)
+
+  return None
+
+def get_path_through_node(src, node, dst, graph=G):
+  visited = set()
+  path1 = bfs(src, node, G, visited)
+  if path1 is None:
+    print "NO PATH FOUND FROM %d TO %d" % (src, node)
+    return
+
+  if dst in path1:
+    return path1
+
+  path1.remove(node)
+  visited = set(path1)
+  path2 = bfs(node, dst, G, visited)
+  if path2 is None:
+    print "NO PATH FOUND FROM %d TO %d THAT DOESN'T CONTAIN %s" % (node, dst, tuple(path1)) 
+    return
+
+  return path1 + path2
+
+def vlb(source, target, graph=G):
+  # choose a random intermediary node to go to first
+  nodes = list(G.nodes())
+  nodes.remove(source)
+  intermediate_node = random.choice(nodes)
+
+  # get path to from source to intermediate node then to target
+  if (source, intermediate_node, target) not in vlb_paths:
+    vlb_paths[(source, intermediate_node, target)] = \
+        get_path_through_node(source, intermediate_node, target)
+  
+  return vlb_paths[(source, intermediate_node, target)]
 
 def mac_to_dpid(mac):
   parts = [int(x) for x in str(mac).split(':')]
@@ -104,22 +158,7 @@ def get_path(source, target, routing_alg='ecmp', G=G):
     paths = ecmp(source, target)
     return random.choice(paths)
   if routing_alg == 'vlb':
-    # choose a random intermediary node to go to first
-    nodes = list(G.nodes())
-    nodes.remove(source)
-    intermediate_node = random.choice(nodes)
-
-    # get path to that node
-    path = ecmp(source, intermediate_node, k=1)[0]
-
-    # then go on a shortest path from that intermediary node to the dest node
-    path2 = ecmp(intermediate_node, target, k=1)[0]
-    path2 = path2[1:] # remove intermediate node from path2 since it's already in path
-    path.extend(path2)
-    # log.critical("PATH from %d to %d to %d" % (source, intermediate_node, target))
-    # log.critical(path)
-
-    return path
+    return vlb(source, target)
 
 class Tutorial (object):
   """

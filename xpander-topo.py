@@ -86,8 +86,9 @@ class XpanderTopo(Topo):
                 self.addLink(host, str(n), port1=1025, port2=1)
 
     def dump_graph_to_file(self, G):
+        filename = 'graph.json'
         adj_data = json_graph.adjacency_data(G)
-        with open('graph.json', 'w') as fp:
+        with open(filename, 'w') as fp:
             json.dump(adj_data, fp)
 
 topos = { 'xpander' : (lambda: XpanderTopo()) }
