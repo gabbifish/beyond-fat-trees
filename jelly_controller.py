@@ -36,9 +36,6 @@ from networkx.readwrite import json_graph
 
 log = core.getLogger()
 
-# packet hash -> path left to traverse
-packet_path_map = {}
-
 # flow_hash of packet -> (time_last_pkt_seen, nbytes_sent, path)
 # time_last_pkt_seen is for flowlet switching
 # nbytes_sent is for switching from ECMP to VLB
@@ -300,14 +297,12 @@ class Tutorial (object):
       print "Event port: " + str(packet_in.in_port)
       
       fhash = flow_hash(packet)
-      phash = packet_hash(packet)
       if fhash not in flowlet_map:
         # this is the first time we are seeing this flow
         # update map with path
         path = get_path(self.dpid, target_id, 'ecmp')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
         flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
-        packet_path_map[phash] = path
 
       elif packet_in.in_port == 1:
         # this packet was just received from a host
@@ -323,15 +318,9 @@ class Tutorial (object):
           path = get_path(self.dpid, target_id, routing_alg)
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
-        packet_path_map[phash] = path
 
-      # path = flowlet_map[fhash][2]
-      # next_hop_id = path[path.index(self.dpid) + 1]
-      path = packet_path_map[phash]
-      next_hop_id = path[1]
-      packet_path_map[phash] = path[1:] # remove node representing current switch
-      log.critical("PATH remaining from %d to %d" % (self.dpid, target_id))
-      log.critical(path)
+      path = flowlet_map[fhash][2]
+      next_hop_id = path[path.index(self.dpid) + 1]
       self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
