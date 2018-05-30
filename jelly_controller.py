@@ -52,8 +52,7 @@ FLOWLET_DELTA_MS = 50
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
 routing_strategy = 'HYB'
 
-#Q_THRESH = 100000
-Q_THRESH = 0
+Q_THRESH = 100000 # 100KB
 
 G = None
 filename = 'pox/ext/graph.json'
@@ -305,7 +304,7 @@ class Tutorial (object):
       if fhash not in flowlet_map:
         # this is the first time we are seeing this flow
         # update map with path
-        path = get_path(self.dpid, target_id, 'vlb')
+        path = get_path(self.dpid, target_id, 'ecmp')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
         flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
         packet_path_map[phash] = path
