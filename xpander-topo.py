@@ -4,18 +4,35 @@ import os
 import math
 import random
 import json
+import sys
 import networkx as nx
 from networkx.readwrite import json_graph
 from mininet.topo import Topo
+from collections import defaultdict
+from mininet.topo import Topo
+from mininet.net import Mininet
+from mininet.node import CPULimitedHost
+from mininet.link import TCLink
+from mininet.node import OVSController
+from mininet.node import Controller
+from mininet.node import RemoteController
+from mininet.cli import CLI
+sys.path.append("../../")
+from pox.ext.jelly_pox import ECMP
+from pox.ext.jelly_pox import HYB
+from subprocess import Popen, PIPE
+from time import sleep
+import itertools
+import exp_util as util
 
 class XpanderTopo(Topo):
 
     def __init__(self, n_hosts=6, n_hosts_per_rack=1, n_ports_per_switch=2, k_lift=2):
 
         self.n_hosts_per_rack = n_hosts_per_rack
-        n_switches = int(n_hosts/n_hosts_per_rack);
-        n_initial_switches = n_ports_per_switch+1;
-        n_lifts = int(math.log(n_switches/n_initial_switches, k_lift));
+        n_switches = int(n_hosts/n_hosts_per_rack)
+        n_initial_switches = n_ports_per_switch+1
+        n_lifts = int(math.log(n_switches/n_initial_switches, k_lift))
 
         print "Creating an initial complete graph of", n_initial_switches, "switches"
         G = nx.complete_graph(n_initial_switches)
@@ -61,7 +78,7 @@ class XpanderTopo(Topo):
             # the copies of u and the copies of v
             random.shuffle(v_copies)
             new_graph.add_edges_from(
-                (u_copies[i], v_copies[i]) for i in range(k));
+                (u_copies[i], v_copies[i]) for i in range(k))
 
         return new_graph
 
@@ -90,4 +107,63 @@ class XpanderTopo(Topo):
         with open('graph.json', 'w') as fp:
             json.dump(adj_data, fp)
 
+def experiment_active_server(net):
+    print "Starting active server experiment"
+    net.start()
+    # sleep to wait for switches to come up and connect to controller
+    sleep(3)
+
+    num_runs = 5
+    
+    print "Running TCP 1-flow experiment on jellyfish"
+    for i in range(0, num_runs):
+        util.iperf_test(net.hosts, "ecmp_1flow", i)
+
+    print "Running TCP 8-flow experiment on jellyfish"
+    for i in range(0, num_runs):
+        util.iperf_test(net.hosts, "ecmp_8flow", i)
+   
+    print "Done with active server experiment for fct"
+    net.stop()
+
+def experiment_lambda(net):
+    print "Starting lambda / flow-starts per second experiment"
+    net.start()
+    # sleep to wait for switches to come up and connect to controller
+    sleep(3)
+
+    num_runs = 5
+    
+    print "Running TCP 1-flow experiment on jellyfish"
+    for i in range(0, num_runs):
+        util.iperf_test(net.hosts, "ecmp_1flow", i)
+
+    print "Running TCP 8-flow experiment on jellyfish"
+    for i in range(0, num_runs):
+        util.iperf_test(net.hosts, "ecmp_8flow", i)
+   
+    print "Done with active server experiment for fct"
+    net.stop()
+
 topos = { 'xpander' : (lambda: XpanderTopo()) }
+def main():
+        # Specify routing algorithm.
+        if len(sys.argv) > 1 and sys.argv[1] == "ecmp":
+            net = Mininet(topo=XpanderTopo(), host=CPULimitedHost, link = TCLink, controller=ECMP)
+        elif len(sys.argv) > 1 and sys.argv[1] == "hyb":
+            net = Mininet(topo=XpanderTopo(), host=CPULimitedHost, link = TCLink, controller=HYB)
+        else: 
+            print "Please enter \"ecmp\" or \"hyb\' as the first argument."
+            return
+
+        # For graphs 10(a) and 10(c)
+        if sys.argv[2] == "active-servers":
+            experiment_active_server(net) 
+        # For graphs 11(a) and 11(c)
+        if sys.argv[2] == "lambda":
+            experiment_lambda(net) 
+        else:
+            print "Please enter \"active-servers\" or \"lambda\' as the second argument."
+
+if __name__ == "__main__":
+	main()
