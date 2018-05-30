@@ -36,6 +36,9 @@ from networkx.readwrite import json_graph
 
 log = core.getLogger()
 
+# packet hash -> path left to traverse
+packet_path_map = {}
+
 # flow_hash of packet -> (time_last_pkt_seen, nbytes_sent, path)
 # time_last_pkt_seen is for flowlet switching
 # nbytes_sent is for switching from ECMP to VLB
@@ -49,7 +52,8 @@ FLOWLET_DELTA_MS = 50
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
 routing_strategy = 'HYB'
 
-Q_THRESH = 100000
+#Q_THRESH = 100000
+Q_THRESH = 0
 
 G = None
 with open('pox/ext/graph.json', 'r') as fp:
@@ -82,6 +86,18 @@ def flow_hash(packet):
     return crc32(pack('LL', *hash_input))
   return 0
 
+# Adapted from ripl-pox source code
+def packet_hash(packet):
+  "Return an 3-tuple hash for TCP/IP packets, otherwise 0."
+  hash_input = [0] * 3
+  if isinstance(packet.next, ipv4):
+    ip = packet.next
+    hash_input[0] = ip.srcip.toUnsigned()
+    hash_input[1] = ip.dstip.toUnsigned()
+    hash_input[2] = ip.id
+    return crc32(pack('LLH', *hash_input))
+  return 0
+
 def get_path(source, target, routing_alg='ecmp', G=G):
   # NOTE: routing_alg can be either 'vlb' or 'ecmp'
   if routing_alg == 'ecmp':
@@ -89,16 +105,19 @@ def get_path(source, target, routing_alg='ecmp', G=G):
     return random.choice(paths)
   if routing_alg == 'vlb':
     # choose a random intermediary node to go to first
-    nodes = G.nodes()
+    nodes = list(G.nodes())
     nodes.remove(source)
     intermediate_node = random.choice(nodes)
 
     # get path to that node
-    path = random.choice(ecmp(source, intermediate_node))
+    path = ecmp(source, intermediate_node, k=1)[0]
 
     # then go on a shortest path from that intermediary node to the dest node
-    path2 = random.choice(ecmp(intermediate_node, target))
+    path2 = ecmp(intermediate_node, target, k=1)[0]
+    path2 = path2[1:] # remove intermediate node from path2 since it's already in path
     path.extend(path2)
+    # log.critical("PATH from %d to %d to %d" % (source, intermediate_node, target))
+    # log.critical(path)
 
     return path
 
@@ -226,6 +245,7 @@ class Tutorial (object):
       if self.dpid == target_id:
         # packet dest is host attached to this id
         # hosts are attached to their switch via port 1, so send out port 1
+        log.info("target host is attached to this switch")
         self.resend_packet(packet_in, 1)
         return
 
@@ -233,16 +253,23 @@ class Tutorial (object):
       if arpp:
         path = ecmp(self.dpid, target_id, k=1)[0]
         next_hop = path[1]
+        log.info("arp")
         self.resend_packet(packet_in, next_hop)
         return;
+
+      print "Src: " + str(packet.src)
+      print "Dest: " + str(packet.dst)
+      print "Event port: " + str(packet_in.in_port)
       
       fhash = flow_hash(packet)
+      phash = packet_hash(packet)
       if fhash not in flowlet_map:
         # this is the first time we are seeing this flow
         # update map with path
-        path = get_path(self.dpid, target_id, 'ecmp')
+        path = get_path(self.dpid, target_id, 'vlb')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
         flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
+        packet_path_map[phash] = path
 
       elif packet_in.in_port == 1:
         # this packet was just received from a host
@@ -258,9 +285,15 @@ class Tutorial (object):
           path = get_path(self.dpid, target_id, routing_alg)
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
+        packet_path_map[phash] = path
 
-      path = flowlet_map[fhash][2]
-      next_hop_id = path[path.index(self.dpid) + 1]
+      # path = flowlet_map[fhash][2]
+      # next_hop_id = path[path.index(self.dpid) + 1]
+      path = packet_path_map[phash]
+      next_hop_id = path[1]
+      packet_path_map[phash] = path[1:] # remove node representing current switch
+      log.critical("PATH remaining from %d to %d" % (self.dpid, target_id))
+      log.critical(path)
       self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
@@ -277,13 +310,8 @@ class Tutorial (object):
 
     ipv6p = packet.find('ipv6')
     if not ipv6p:
-      print "Src: " + str(packet.src)
-      print "Dest: " + str(packet.dst)
-      print "Event port: " + str(event.port)
       #self.act_like_hub(packet, packet_in)
       log.info("packet in")
-      print "event.connection.dpid"
-      print event.connection.dpid
       #self.act_like_switch(packet, packet_in)
       self.route_packet(packet, packet_in)
 
