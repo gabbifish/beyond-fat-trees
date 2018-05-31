@@ -10,21 +10,10 @@
 
 import os
 import sys
+import json
 import networkx as nx
 from networkx.readwrite import json_graph
 from mininet.topo import Topo
-from collections import defaultdict
-from mininet.topo import Topo
-from mininet.net import Mininet
-from mininet.node import CPULimitedHost
-from mininet.link import TCLink
-from mininet.node import OVSController
-from mininet.node import Controller
-from mininet.node import RemoteController
-from subprocess import Popen, PIPE
-from time import sleep
-import itertools
-import json
 
 class FtreeTopo(Topo):
 
