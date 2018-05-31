@@ -16,15 +16,10 @@ from mininet.link import TCLink
 from mininet.node import OVSController
 from mininet.node import Controller
 from mininet.node import RemoteController
-from mininet.cli import CLI
-sys.path.append("../../")
-from pox.ext.custom_pox import ECMP
-from pox.ext.custom_pox import HYB
 from subprocess import Popen, PIPE
 from mininet.cli import CLI
 from time import sleep
 import itertools
-from pox.ext.util import *
 
 class XpanderTopo(Topo):
 
@@ -108,70 +103,4 @@ class XpanderTopo(Topo):
         with open(filename, 'w') as fp:
             json.dump(adj_data, fp)
 
-def experiment_active_server(net):
-    print "Starting active server experiment"
-    net.start()
-    # sleep to wait for switches to come up and connect to controller
-    sleep(3)
-
-    num_runs = 5
-    
-    print "Running TCP 1-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_1flow", i)
-
-    print "Running TCP 8-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_8flow", i)
-   
-    print "Done with active server experiment for fct"
-    net.stop()
-
-def experiment_lambda(net):
-    print "Starting lambda / flow-starts per second experiment"
-    net.start()
-    # sleep to wait for switches to come up and connect to controller
-    sleep(3)
-
-    num_runs = 5
-    
-    print "Running TCP 1-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_1flow", i)
-
-    print "Running TCP 8-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_8flow", i)
-   
-    print "Done with active server experiment for fct"
-    net.stop()
-
 topos = { 'xpander' : (lambda: XpanderTopo()) }
-def main():
-        # Specify routing algorithm.
-        if len(sys.argv) > 1 and sys.argv[1] == "ecmp":
-            net = Mininet(topo=XpanderTopo(), host=CPULimitedHost, link = TCLink, controller=ECMP)
-        elif len(sys.argv) > 1 and sys.argv[1] == "hyb":
-            net = Mininet(topo=XpanderTopo(), host=CPULimitedHost, link = TCLink, controller=HYB)
-        else: 
-            print "Please enter \"ecmp\" or \"hyb\' as the first argument."
-            return
-
-        if sys.argv[2] == 'cli':
-            net.start()
-            sleep(3)
-            CLI(net)
-            net.stop()
-            return
-
-        # For graphs 10(a) and 10(c)
-        if sys.argv[2] == "active-servers":
-            experiment_active_server(net) 
-        # For graphs 11(a) and 11(c)
-        if sys.argv[2] == "lambda":
-            experiment_lambda(net) 
-        else:
-            print "Please enter \"active-servers\" or \"lambda\' as the second argument."
-
-if __name__ == "__main__":
-	main()
