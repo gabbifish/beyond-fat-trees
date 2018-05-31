@@ -13,8 +13,6 @@ from mininet.node import Controller
 from mininet.node import RemoteController
 from mininet.cli import CLI
 sys.path.append("../../")
-from pox.ext.custom_pox import ECMP
-from pox.ext.custom_pox import HYB
 from subprocess import Popen, PIPE
 from time import sleep
 import itertools
