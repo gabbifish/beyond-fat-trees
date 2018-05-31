@@ -1,13 +1,12 @@
 # Fat-Tree Topology
-# @author: andy
 
 # Usage:
-# $ sudo mn --custom fattree-topo.py --topo ftree --controller=remote
+# $ sudo mn --custom fattree_topo.py --topo ftree --controller=remote
 # $ ryu-manager ./ryu/app/simple_switch_stp_13.py
 
 # Notice:
 # Spanning Tree Protocol is important.
-# I have test FtreeTopo(4, 2), (4, 3), (8, 2).
+# We have tested FtreeTopo(4, 2), (4, 3), (8, 2).
 
 import os
 import sys
@@ -24,8 +23,8 @@ from mininet.node import Controller
 from mininet.node import RemoteController
 from mininet.cli import CLI
 sys.path.append("../../")
-from pox.ext.jelly_pox import ECMP
-from pox.ext.jelly_pox import HYB
+from pox.ext.custom_pox import ECMP
+from pox.ext.custom_pox import HYB
 from subprocess import Popen, PIPE
 from time import sleep
 import itertools
