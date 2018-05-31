@@ -22,6 +22,7 @@ from time import sleep
 import itertools
 
 random.seed(1025)
+debug = None
 
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
@@ -98,7 +99,7 @@ def experiment_lambda(net):
         iperf_test(net.hosts, "ecmp_8flow", i)
    
     print "Done with active server experiment for fct"
-    net.stop
+    net.stop()
 
 # Runs one permute experiment
 # net: Mininet network
@@ -116,8 +117,9 @@ def experiment_permute(net, flow_starts, x, num_seconds):
     server_to_iperf_pid = {}
 
     # for each second:
+    for second in range(0, num_seconds):
         # for each src/dest pair in active server permutation
-        for src, dst in active_servers:
+        for src, dst in pairwise(active_servers):
             # choose flow size from pFabric Web search distribution
             # (NOTE: for now we will just be using the mean of 2.4MB per flow)
             flow_size = '2.4M'
@@ -125,25 +127,59 @@ def experiment_permute(net, flow_starts, x, num_seconds):
             print "  Running %d flows of %s bytes each from %s to %s" \
                 % (num_flows_per_server, flow_size, src.name, dst.name)
 
-            port = # TODO: choose scheme for ports
-            output_file = # TODO: choose naming scheme for output file
-            num_bytes_per_buffer = 
+            port = 5001 + second # scheme for ports: open ports second by second
+            output_file = "perm_output/perm_s_%d_src_%s_dst_%s" % (second, src.IP(), dst.IP()) 
+            num_bytes_per_buffer = "128K"
 
             # run iperf server on second server
-            dst_cmd = "iperf -s -p %d -l &" % (port, num_bytes_per_buffer) 
+            dst_cmd = "iperf -s -p %d -l %s &" % (port, num_bytes_per_buffer) 
 
             # run iperf client on first server
-            src_cmd = "iperf -c %s -p %d -n %s -P %d -l %d > %s &" \
+            # src_cmd = "iperf -c %s -p %d -n %s -P %d -l %d > %s &" \
+            #     % (dst.IP(), port, flow_size, num_flows_per_server,
+            #         num_bytes_per_buffer, output_file)
+            src_cmd = "iperf -c %s -p %d -n %s -P %d -l %s -y C > %s &" \
                 % (dst.IP(), port, flow_size, num_flows_per_server,
                     num_bytes_per_buffer, output_file)
 
+            if debug:
+                print "    on %s running command: %s" % (dst.name, dst_cmd)
+            dst.sendCmd(dst_cmd)
+            # wait until command has executed
+            dst.waitOutput(verbose=True)
+            if debug:
+                print "    on %s running command: %s" % (src.name, src_cmd)
+            src.sendCmd(src_cmd)
+            src.waitOutput(verbose=True)
+            pid = int(src.cmd('echo $!'))
+            server_to_iperf_pid[src] = pid
+
+        # Wait one second after iperf commands are launched.
+        sleep(1)
+
+    CLI(net)
+    print "Waiting for iperf tests to finish..."
+    for host, pid in server_to_iperf_pid.iteritems():
+        if debug:
+            print "waiting for pid %d on host %s" % (pid, host.name)
+        host.cmd('wait', pid)
+
+    print "Killing all iperf instances..."
+    # need to kill iperf instances so we can rerun these tests on the same mininet
+    for client, server in pairwise(active_servers):
+        server.cmd( "pkill iperf" )
+        # Wait for iperf server to terminate
+        server.cmd( "wait" )
+
 def main():
+        global debug
+        debug = True
         if len(sys.argv) < 4:
             print "Usage: sudo python experiment.py [ftree|xpander] [ecmp|hyb] [active-servers|lambda|cli]"
             return
 
         if sys.argv[1] == 'ftree':
-            topo = FtreeTopo(4, 2)
+            topo = FtreeTopo(8, 2)
         elif sys.argv[1] == 'xpander':
             topo = XpanderTopo()
 
@@ -155,21 +191,27 @@ def main():
         print "Running %s topo with %s controller" % (sys.argv[1], sys.argv[2])
         net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=controller)
 
+        net.start()
+        sleep(3)
+
         if sys.argv[3] == 'cli':
-            net.start()
-            sleep(3)
             CLI(net)
-            net.stop()
             return
 
         # For graphs 10(a) and 10(c)
         if sys.argv[3] == "active-servers":
-            experiment_active_server(net) 
+            flow_starts = 32
+            x = 0.31
+            num_seconds = 5
+            experiment_permute(net, flow_starts, x, num_seconds)
+            # experiment_active_server(net) 
         # For graphs 11(a) and 11(c)
-        if sys.argv[3] == "lambda":
+        elif sys.argv[3] == "lambda":
             experiment_lambda(net) 
         else:
             print "Please enter \"active-servers\" or \"lambda\' as the second argument."
+
+        net.stop()
 
 if __name__ == "__main__":
     main()
