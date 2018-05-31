@@ -1,5 +1,8 @@
 # Xpander Topology
 
+# Usage:
+# $ sudo mn --custom xpander_topo.py --topo xpander --controller=remote
+
 import os
 import math
 import random
@@ -12,7 +15,7 @@ random.seed(1025)
 
 class XpanderTopo(Topo):
 
-    def __init__(self, n_hosts=12, n_hosts_per_rack=2, n_ports_per_switch=2, k_lift=2):
+    def __init__(self, n_hosts=130, n_hosts_per_rack=5, n_ports_per_switch=2, k_lift=2):
 
         self.n_hosts_per_rack = n_hosts_per_rack
         n_switches = int(n_hosts/n_hosts_per_rack)

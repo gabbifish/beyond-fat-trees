@@ -21,6 +21,8 @@ from subprocess import Popen, PIPE
 from time import sleep
 import itertools
 
+random.seed(1025)
+
 def pairwise(iterable):
     "s -> (s0,s1), (s1,s2), (s2, s3), ..."
     a, b = itertools.tee(iterable)
@@ -96,7 +98,44 @@ def experiment_lambda(net):
         iperf_test(net.hosts, "ecmp_8flow", i)
    
     print "Done with active server experiment for fct"
-    net.stop()
+    net.stop
+
+# Runs one permute experiment
+# net: Mininet network
+# flow_starts: num flow-starts per second (across all servers)
+# x: fraction of active servers
+# num_seconds: the number of seconds to run simulation for
+def experiment_permute(net, flow_starts, x, num_seconds):
+    # choose x fraction of servers as active
+    num_active_servers = int(len(net.hosts) * x)
+    active_servers = random.sample(net.hosts, num_active_servers)
+
+    num_flows_per_server = flow_starts / num_active_servers
+
+    # server -> pid of iperf client process (so we can wait for process to finish)
+    server_to_iperf_pid = {}
+
+    # for each second:
+        # for each src/dest pair in active server permutation
+        for src, dst in active_servers:
+            # choose flow size from pFabric Web search distribution
+            # (NOTE: for now we will just be using the mean of 2.4MB per flow)
+            flow_size = '2.4M'
+
+            print "  Running %d flows of %s bytes each from %s to %s" \
+                % (num_flows_per_server, flow_size, src.name, dst.name)
+
+            port = # TODO: choose scheme for ports
+            output_file = # TODO: choose naming scheme for output file
+            num_bytes_per_buffer = 
+
+            # run iperf server on second server
+            dst_cmd = "iperf -s -p %d -l &" % (port, num_bytes_per_buffer) 
+
+            # run iperf client on first server
+            src_cmd = "iperf -c %s -p %d -n %s -P %d -l %d > %s &" \
+                % (dst.IP(), port, flow_size, num_flows_per_server,
+                    num_bytes_per_buffer, output_file)
 
 def main():
         if len(sys.argv) < 4:
