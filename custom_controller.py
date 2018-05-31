@@ -209,60 +209,6 @@ class Tutorial (object):
     # implementation would check that we got the full data before
     # sending it (len(packet_in.data) should be == packet_in.total_len)).
 
-  def act_like_switch (self, packet, packet_in):
-    """
-    Implement switch-like behavior.
-    """
-
-    # Learn the port for the source MAC
-    print "packet arrived from MAC", packet.src, "on switch", self.dpid, "port", packet_in.in_port
-    self.mac_to_port[packet.src] = packet_in.in_port
-
-    # arpp = packet.find('arp')
-    # if arpp:
-    #   print "arp packet -> flooding out all ports"
-    #   self.resend_packet(packet_in, of.OFPP_ALL)
-    #   return
-
-    ipp = packet.find('ipv4')
-    if ipp:
-      print "ip packet with src", ipp.srcip, "and dst", ipp.dstip
-
-    # If we know the out port for the mac destination
-    if packet.dst in self.mac_to_port:
-      print "found mac destination in map"
-      out_port = self.mac_to_port[packet.dst]
-      
-      # drop packet if it should go out the same port it arrived on
-      if out_port == packet_in.in_port:
-        print "out_port is the same as in_port... dropping packet"
-        return
-
-      # Send packet out the associated port
-      print "sending packet out port", out_port
-      self.resend_packet(packet_in, out_port)
-
-      # Once you have the above working, try pushing a flow entry
-      # instead of resending the packet (comment out the above and
-      # uncomment and complete the below.)
-
-      #log.debug("Installing flow...")
-      # Maybe the log statement should have source/destination/port?
-
-      #msg = of.ofp_flow_mod()
-      #
-      ## Set fields to match received packet
-      #msg.match = of.ofp_match.from_packet(packet)
-      #
-      #< Set other fields of flow_mod (timeouts? buffer_id?) >
-      #
-      #< Add an output action, and send -- similar to resend_packet() >
-
-    else:
-      # Flood the packet out everything but the input port
-      print 'flooding packet'
-      self.resend_packet(packet_in, of.OFPP_ALL)
-
   def route_packet (self, packet, packet_in):
       # Get destination IP address of packet
       ipdst = None
