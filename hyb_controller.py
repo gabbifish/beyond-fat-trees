@@ -344,7 +344,7 @@ class Tutorial (object):
       self.route_packet(packet, packet_in)
 
 
-def launch ():
+def launch (routing=None):
   """
   Starts the component
   """
@@ -352,4 +352,9 @@ def launch ():
     log.info("switch %s has come up" % (event.dpid))
     log.debug("Controlling %s" % (event.connection,))
     Tutorial(event.connection)
+  
+  global routing_strategy
+  routing_strategy = routing
+  log.info('Controller is using routing strategy %s' % routing_strategy)
+
   core.openflow.addListenerByName("ConnectionUp", start_switch)

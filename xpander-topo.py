@@ -21,6 +21,7 @@ sys.path.append("../../")
 from pox.ext.jelly_pox import ECMP
 from pox.ext.jelly_pox import HYB
 from subprocess import Popen, PIPE
+from mininet.cli import CLI
 from time import sleep
 import itertools
 from pox.ext.util import *
@@ -154,6 +155,13 @@ def main():
             net = Mininet(topo=XpanderTopo(), host=CPULimitedHost, link = TCLink, controller=HYB)
         else: 
             print "Please enter \"ecmp\" or \"hyb\' as the first argument."
+            return
+
+        if sys.argv[2] == 'cli':
+            net.start()
+            sleep(3)
+            CLI(net)
+            net.stop()
             return
 
         # For graphs 10(a) and 10(c)
