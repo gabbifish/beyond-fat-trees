@@ -113,31 +113,29 @@ def experiment_permute(net, flow_starts, x, num_seconds):
 
     num_flows_per_server = flow_starts / num_active_servers
 
-    # server -> pid of iperf client process (so we can wait for process to finish)
-    server_to_iperf_pid = {}
+    # server -> pid of iperf client processes (so we can wait for process to finish)
+    server_to_iperf_pids = defaultdict(list)
 
     # for each second:
+    num_seconds = 2
     for second in range(0, num_seconds):
         # for each src/dest pair in active server permutation
         for src, dst in pairwise(active_servers):
             # choose flow size from pFabric Web search distribution
             # (NOTE: for now we will just be using the mean of 2.4MB per flow)
-            flow_size = '2.4M'
+            flow_size = '1M'
 
             print "  Running %d flows of %s bytes each from %s to %s" \
                 % (num_flows_per_server, flow_size, src.name, dst.name)
 
             port = 5001 + second # scheme for ports: open ports second by second
             output_file = "perm_output/perm_s_%d_src_%s_dst_%s" % (second, src.IP(), dst.IP()) 
-            num_bytes_per_buffer = "128K"
+            num_bytes_per_buffer = "8K"
 
             # run iperf server on second server
             dst_cmd = "iperf -s -p %d -l %s &" % (port, num_bytes_per_buffer) 
 
             # run iperf client on first server
-            # src_cmd = "iperf -c %s -p %d -n %s -P %d -l %d > %s &" \
-            #     % (dst.IP(), port, flow_size, num_flows_per_server,
-            #         num_bytes_per_buffer, output_file)
             src_cmd = "iperf -c %s -p %d -n %s -P %d -l %s -y C > %s &" \
                 % (dst.IP(), port, flow_size, num_flows_per_server,
                     num_bytes_per_buffer, output_file)
@@ -152,17 +150,22 @@ def experiment_permute(net, flow_starts, x, num_seconds):
             src.sendCmd(src_cmd)
             src.waitOutput(verbose=True)
             pid = int(src.cmd('echo $!'))
-            server_to_iperf_pid[src] = pid
+            server_to_iperf_pids[src].append(pid)
 
         # Wait one second after iperf commands are launched.
         sleep(1)
 
-    CLI(net)
+    if debug:
+        print "Server to iperf pid dictionary:"
+        print server_to_iperf_pids
+
     print "Waiting for iperf tests to finish..."
-    for host, pid in server_to_iperf_pid.iteritems():
-        if debug:
-            print "waiting for pid %d on host %s" % (pid, host.name)
-        host.cmd('wait', pid)
+    for host, pids in server_to_iperf_pids.iteritems():
+        for pid in pids:
+            if debug:
+                print "waiting for pid %d on host %s" % (pid, host.name)
+            host.cmd('wait', pid)
+    print "All iperf tests have finished"
 
     print "Killing all iperf instances..."
     # need to kill iperf instances so we can rerun these tests on the same mininet
@@ -170,6 +173,7 @@ def experiment_permute(net, flow_starts, x, num_seconds):
         server.cmd( "pkill iperf" )
         # Wait for iperf server to terminate
         server.cmd( "wait" )
+    print "Done killing all iperf instances"
 
 def main():
         global debug
@@ -196,6 +200,7 @@ def main():
 
         if sys.argv[3] == 'cli':
             CLI(net)
+            net.stop()
             return
 
         # For graphs 10(a) and 10(c)
