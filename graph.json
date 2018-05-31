@@ -1,1 +1,1 @@
-{"directed": false, "graph": [], "nodes": [{"id": 3}, {"id": 4}, {"id": 5}, {"id": 6}, {"id": 7}, {"id": 8}], "adjacency": [[{"id": 8}, {"id": 6}], [{"id": 5}, {"id": 7}], [{"id": 8}, {"id": 4}], [{"id": 3}, {"id": 7}], [{"id": 4}, {"id": 6}], [{"id": 3}, {"id": 5}]], "multigraph": false}
+{"directed": false, "graph": [], "nodes": [{"id": 3}, {"id": 4}, {"id": 5}, {"id": 6}, {"id": 7}, {"id": 8}], "adjacency": [[{"id": 5}, {"id": 7}], [{"id": 8}, {"id": 6}], [{"id": 8}, {"id": 3}], [{"id": 4}, {"id": 7}], [{"id": 3}, {"id": 6}], [{"id": 4}, {"id": 5}]], "multigraph": false}
