@@ -20,6 +20,7 @@ from pox.ext.fattree_topo import FtreeTopo
 from subprocess import Popen, PIPE
 from time import sleep
 import itertools
+import traceback
 
 random.seed(1025)
 debug = None
@@ -129,7 +130,7 @@ def experiment_permute(net, flow_starts, x, num_seconds):
                 % (num_flows_per_server, flow_size, src.name, dst.name)
 
             port = 5001 + second # scheme for ports: open ports second by second
-            output_file = "perm_output/perm_s_%d_src_%s_dst_%s" % (second, src.IP(), dst.IP()) 
+            output_file = "perm_output/%s_%s_frac_%d_s_%d_src_%s_dst_%s" % (net.topo.name, net.controller.name, int(100*x), second, src.IP(), dst.IP()) 
             num_bytes_per_buffer = "8K"
 
             # run iperf server on second server
@@ -179,7 +180,7 @@ def main():
         global debug
         debug = True
         if len(sys.argv) < 4:
-            print "Usage: sudo python experiment.py [ftree|xpander] [ecmp|hyb] [active-servers|lambda|cli]"
+            print "Usage: sudo python experiment.py [ftree|xpander] [ecmp|hyb] [active-servers|lambda|cli] param"
             return
 
         if sys.argv[1] == 'ftree':
@@ -203,20 +204,31 @@ def main():
             net.stop()
             return
 
-        # For graphs 10(a) and 10(c)
-        if sys.argv[3] == "active-servers":
-            flow_starts = 32
-            x = 0.31
-            num_seconds = 5
-            experiment_permute(net, flow_starts, x, num_seconds)
-            # experiment_active_server(net) 
-        # For graphs 11(a) and 11(c)
-        elif sys.argv[3] == "lambda":
-            experiment_lambda(net) 
-        else:
-            print "Please enter \"active-servers\" or \"lambda\' as the second argument."
+        try:
+            # If no param passed in as part of active-servers or lambda, this is a problem:
+            if len(sys.argv) < 5:
+                print "A parameter must be passed in following [active-servers|cli]"
 
-        net.stop()
+            # For graphs 10(a) and 10(c)
+            if sys.argv[3] == "active-servers":
+                flow_starts = 32
+                num_steps = int(sys.argv[4]) # Distance between active-servers fractions
+                num_seconds = 5
+                for x in range(1, num_steps, 1):
+                    frac = float(x)/num_steps
+                    print "Simulating experiment for active server fraction %f" % (frac)
+                    experiment_permute(net, flow_starts, frac, num_seconds)
+                # experiment_active_server(net) 
+            # For graphs 11(a) and 11(c)
+            elif sys.argv[3] == "lambda":
+                experiment_lambda(net) 
+            else:
+                print "Please enter \"active-servers\" or \"lambda\' as the second argument."
+
+            net.stop()
+        except: # Make sure to shut down mininet!
+            traceback.print_exc()
+            net.stop()
 
 if __name__ == "__main__":
     main()

@@ -4,6 +4,7 @@ import os
 POXDIR = os.getcwd() + '/../..'
 
 class ECMP( Controller ):
+    name = "ecmp"
     def __init__( self, name, cdir=POXDIR,
                   command='python pox.py', cargs=('log --file=custom_controller.log,w openflow.of_01 --port=%s ext.custom_controller --routing=ECMP' ),
                   **kwargs ):
@@ -11,6 +12,8 @@ class ECMP( Controller ):
                              command=command,
                              cargs=cargs, **kwargs )
 class HYB( Controller ):
+    name = "hyb"
+
     def __init__( self, name, cdir=POXDIR,
                   command='python pox.py', cargs=('log --file=custom_controller.log,w openflow.of_01 --port=%s ext.custom_controller --routing=HYB' ),
                   **kwargs ):
