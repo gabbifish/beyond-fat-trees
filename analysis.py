@@ -4,7 +4,7 @@ import re
 import matplotlib.pyplot as plt
 import csv
 import re
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 import sys
 import os
 import math
@@ -25,52 +25,86 @@ def readThroughputFromCSV(arr, filename, idx):
   with open(DATA_DIR+filename, 'rb') as f:
     reader = csv.reader(f)
     for row in reader:
-      arr.append(int(row[idx]))
+      val = int(row[idx])
+      # need special parsing for intervals. 
+      if idx == 5:
+        return #fix!
+      arr.append(val)
     f.close()
+
+def generate10a():
+  # Maps storing mapping of active server fraction [key] to average fct [value]
+  ftree_ecmp_fct_avg = defaultdict(lambda: [])
+  xpander_ecmp_fct_avg = defaultdict(lambda: [])
+  xpander_hyb_fct_avg = defaultdict(lambda: [])
+  # Iterate over each topology. 
+  for filename in os.listdir(DATA_DIR):
+    m = re.search('_*_*frac_(\d+)*', filename)
+    frac = m.group(1)
+    
+    avg_list = None
+    if filename.startswith("ftree_ecmp_frac"): 
+      avg_list = ftree_ecmp_throughput_avg[frac]
+    if filename.startswith("xpander_ecmp_frac"): 
+      avg_list = xpander_ecmp_throughput_avg[frac]
+    if filename.startswith("xpander_hyb_frac"): 
+      avg_list = xpander_hyb_throughput_avg[frac]
+    # Iterate over each file corresponding to a certain fraction, get all bandwidth measurements.
+    readThroughputFromCSV(avg_list, filename, 5) 
+
+  generateGraph("10c", ftree_ecmp_throughput_avg, xpander_ecmp_throughput_avg, xpander_hyb_throughput_avg)
 
 def computeAllThroughputAvgs(avg_dict):
   for (key, value) in avg_dict.iteritems():
     avg_dict[key] = sum(value) / len(value)
-    avg_dict[key] /= math.pow(10, 9) # Divide by 10^9 to get gigabytes
+    avg_dict[key] /= math.pow(10, 6) # Divide by 10^6 to get megabytes
 
 def generate10c():
-  # prefixes = ["ftree_ecmp", "xpander_ecmp", "xpander_hyb"]
-
   # Maps storing mapping of active server fraction [key] to average throughput [value]
   ftree_ecmp_throughput_avg = defaultdict(lambda: [])
   xpander_ecmp_throughput_avg = defaultdict(lambda: [])
   xpander_hyb_throughput_avg = defaultdict(lambda: [])
   # Iterate over each topology. 
   for filename in os.listdir(DATA_DIR):
-    
     m = re.search('_*_*frac_(\d+)*', filename)
     frac = m.group(1)
     
     avg_list = None
-    if filename.startswith("ftree_ecmp"): 
+    if filename.startswith("ftree_ecmp_frac"): 
       avg_list = ftree_ecmp_throughput_avg[frac]
-    if filename.startswith("xpander_ecmp"): 
+    if filename.startswith("xpander_ecmp_frac"): 
       avg_list = xpander_ecmp_throughput_avg[frac]
-    if filename.startswith("xpander_hyb"): 
+    if filename.startswith("xpander_hyb_frac"): 
       avg_list = xpander_hyb_throughput_avg[frac]
     # Iterate over each file corresponding to a certain fraction, get all bandwidth measurements.
     readThroughputFromCSV(avg_list, filename, 7) 
 
-  # Now, compute average throughput for each fraction's corresponding throughput list.
-  computeAllThroughputAvgs(ftree_ecmp_throughput_avg)
-  computeAllThroughputAvgs(xpander_ecmp_throughput_avg)
-  computeAllThroughputAvgs(xpander_hyb_throughput_avg)
-  # print ftree_ecmp_throughput_avg
+  generateGraph("10c", ftree_ecmp_throughput_avg, xpander_ecmp_throughput_avg, xpander_hyb_throughput_avg)
+
+def generateGraph(graph, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg):
+    # Now, compute average throughput for each fraction's corresponding throughput list.
+  computeAllThroughputAvgs(ftree_ecmp_avg)
+  computeAllThroughputAvgs(xpander_ecmp_avg)
+  computeAllThroughputAvgs(xpander_hyb_avg)
+
+  # Sort all dicts in order of ascending keys!
+  ftree_ecmp_avg = OrderedDict(sorted(ftree_ecmp_avg.items()))
+  xpander_ecmp_avg = OrderedDict(sorted(xpander_ecmp_avg.items()))
+  xpander_hyb_avg = OrderedDict(sorted(xpander_hyb_avg.items()))
 
   # plt.figure()
-  plt.plot(ftree_ecmp_throughput_avg.keys(), ftree_ecmp_throughput_avg.values(), label='ftree-ecmp')
-  plt.plot(xpander_ecmp_throughput_avg.keys(), xpander_ecmp_throughput_avg.values(), label='xpander-ecmp')
-  plt.plot(xpander_ecmp_throughput_avg.keys(), xpander_ecmp_throughput_avg.values(), label='xpander-hyb')
+  plt.plot(ftree_ecmp_avg.keys(), ftree_ecmp_avg.values(), label='ftree-ecmp')
+  plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-ecmp')
+  plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-hyb')
+
+  # Scale y axis appropriately
+  plt.ylim(ymax=3)  
+  plt.ylim(ymin=0)  
 
   plt.title('Reproduction of Figure 10c')
   plt.xlabel("% Active servers")
-  plt.ylabel("Avg throughput (GB)")
-  plt.legend(loc='upper left')
+  plt.ylabel("Avg throughput (MB)")
+  plt.legend(loc='upper right')
   plt.savefig("10c.png")
 
 
@@ -83,7 +117,7 @@ def main():
     return
 
   if sys.argv[1] == "10a":
-    return
+    generate10a()
 
   if sys.argv[1] == "10c":
     generate10c()
