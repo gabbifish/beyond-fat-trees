@@ -118,13 +118,12 @@ def experiment_permute(net, flow_starts, x, num_seconds):
     server_to_iperf_pids = defaultdict(list)
 
     # for each second:
-    num_seconds = 2
     for second in range(0, num_seconds):
         # for each src/dest pair in active server permutation
         for src, dst in pairwise(active_servers):
             # choose flow size from pFabric Web search distribution
             # (NOTE: for now we will just be using the mean of 2.4MB per flow)
-            flow_size = '1M'
+            flow_size = '100K'
 
             print "  Running %d flows of %s bytes each from %s to %s" \
                 % (num_flows_per_server, flow_size, src.name, dst.name)
@@ -213,7 +212,7 @@ def main():
             if sys.argv[3] == "active-servers":
                 flow_starts = 32
                 num_steps = int(sys.argv[4]) # Distance between active-servers fractions
-                num_seconds = 5
+                num_seconds = 3
                 for x in range(1, num_steps, 1):
                     frac = float(x)/num_steps
                     print "Simulating experiment for active server fraction %f" % (frac)

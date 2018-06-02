@@ -15,6 +15,8 @@ random.seed(1025)
 
 class XpanderTopo(Topo):
 
+    name = "xpander"
+
     def __init__(self, n_hosts=32, n_switches=8, n_initial_switches=4, k_lift=2):
 
         self.n_hosts_per_rack = int(n_hosts/n_switches) 
