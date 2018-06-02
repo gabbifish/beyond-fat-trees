@@ -32,83 +32,12 @@ def pairwise(iterable):
     next(b, None)
     return zip(a, b) 
 
-def iperf_test(hosts, test_type, index=0):
-    # host to pid of the iperf client process
-    host_to_pid = {}
-    for client, server in pairwise(hosts):
-        print "  testing throughput from %s to %s" % (client.name, server.name)
-
-        output_file = "iperf_%s_%s_to_%s_%d.txt" % (test_type,
-            client.name, server.name, index)
-        server_cmd = "iperf -s -p %d &" % (5555)
-        client_cmd = "iperf -c %s -p %d %s -t %d > %s &" % (server.IP(),
-            5555, ("-P 8" if test_type.endswith("8flow") else ""), 5, output_file)
-        
-        print "    on %s running command: %s" % (server.name, server_cmd)
-        server.sendCmd(server_cmd)
-        # wait until command has executed
-        server.waitOutput(verbose=True)
-        print "    on %s running command: %s" % (client.name, client_cmd)
-        client.sendCmd(client_cmd)
-        client.waitOutput(verbose=True)
-        pid = int(client.cmd('echo $!'))
-        host_to_pid[client] = pid
-
-    print "Waiting for iperf tests to finish..."
-    for host, pid in host_to_pid.iteritems():
-        host.cmd('wait', pid)
-
-    print "Killing all iperf instances..."
-    # need to kill iperf instances so we can rerun these tests on the same mininet
-    for client, server in pairwise(hosts):
-        server.cmd( "kill -9 %iperf" )
-        # Wait for iperf server to terminate
-        server.cmd( "wait" )
-
-def experiment_active_server(net):
-    print "Starting active server experiment"
-    net.start()
-    # sleep to wait for switches to come up and connect to controller
-    sleep(3)
-
-    num_runs = 5
-    
-    print "Running TCP 1-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_1flow", i)
-
-    print "Running TCP 8-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_8flow", i)
-   
-    print "Done with active server experiment for fct"
-    net.stop()
-
-def experiment_lambda(net):
-    print "Starting lambda / flow-starts per second experiment"
-    net.start()
-    # sleep to wait for switches to come up and connect to controller
-    sleep(3)
-
-    num_runs = 5
-    
-    print "Running TCP 1-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_1flow", i)
-
-    print "Running TCP 8-flow experiment on jellyfish"
-    for i in range(0, num_runs):
-        iperf_test(net.hosts, "ecmp_8flow", i)
-   
-    print "Done with active server experiment for fct"
-    net.stop()
-
 # Runs one permute experiment
 # net: Mininet network
 # flow_starts: num flow-starts per second (across all servers)
 # x: fraction of active servers
 # num_seconds: the number of seconds to run simulation for
-def experiment_permute(net, flow_starts, x, num_seconds):
+def experiment_permute(net, flow_starts, x, num_seconds=2):
     # choose x fraction of servers as active
     num_active_servers = int(len(net.hosts) * x)
     active_servers = random.sample(net.hosts, num_active_servers)
@@ -118,8 +47,6 @@ def experiment_permute(net, flow_starts, x, num_seconds):
     # server -> pid of iperf client processes (so we can wait for process to finish)
     server_to_iperf_pids = defaultdict(list)
 
-    # for each second:
-    num_seconds = 2
     for second in range(0, num_seconds):
         # for each src/dest pair in active server permutation
         for src, dst in pairwise(active_servers):
@@ -214,16 +141,16 @@ def main():
             # For graphs 10(a) and 10(c)
             if args.test == "active-servers":
                 flow_starts = 32
-                num_steps = int(sys.argv[4]) # Distance between active-servers fractions
-                num_seconds = 5
+                num_steps = int(args.num_steps) # Number of intervals to test for
                 for x in range(1, num_steps, 1):
                     frac = float(x)/num_steps
                     print "Simulating experiment for active server fraction %f" % (frac)
-                    experiment_permute(net, flow_starts, frac, num_seconds)
-                # experiment_active_server(net) 
+                    experiment_permute(net, flow_starts, frac)
+            
             # For graphs 11(a) and 11(c)
             elif args.test == "lambda":
-                experiment_lambda(net) 
+                print "lambda experiment"
+                # experiment_lambda(net) 
 
             net.stop()
         except: # Make sure to shut down mininet!
