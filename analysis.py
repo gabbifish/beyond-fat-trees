@@ -12,8 +12,7 @@ import math
 debug = None
 DATA_DIR = "perm_output/"
 
-
-def readThroughputFromCSV(arr, filename):
+def readThroughputFromCSV(arr, filename, idx):
   # CSV headers:
   # 0 = timestamp
   # 1 = source_address
@@ -26,12 +25,11 @@ def readThroughputFromCSV(arr, filename):
   with open(DATA_DIR+filename, 'rb') as f:
     reader = csv.reader(f)
     for row in reader:
-      arr.append(int(row[7]))
+      arr.append(int(row[idx]))
     f.close()
 
 def computeAllThroughputAvgs(avg_dict):
   for (key, value) in avg_dict.iteritems():
-    observation_len = len(value)
     avg_dict[key] = sum(value) / len(value)
     avg_dict[key] /= math.pow(10, 9) # Divide by 10^9 to get gigabytes
 
@@ -55,14 +53,25 @@ def generate10c():
       avg_list = xpander_ecmp_throughput_avg[frac]
     if filename.startswith("xpander_hyb"): 
       avg_list = xpander_hyb_throughput_avg[frac]
-    # Iterate over each file corresponding to a certain fraction.
-    readThroughputFromCSV(avg_list, filename)
+    # Iterate over each file corresponding to a certain fraction, get all bandwidth measurements.
+    readThroughputFromCSV(avg_list, filename, 7) 
 
   # Now, compute average throughput for each fraction's corresponding throughput list.
   computeAllThroughputAvgs(ftree_ecmp_throughput_avg)
   computeAllThroughputAvgs(xpander_ecmp_throughput_avg)
   computeAllThroughputAvgs(xpander_hyb_throughput_avg)
-  print ftree_ecmp_throughput_avg
+  # print ftree_ecmp_throughput_avg
+
+  # plt.figure()
+  plt.plot(ftree_ecmp_throughput_avg.keys(), ftree_ecmp_throughput_avg.values(), label='ftree-ecmp')
+  plt.plot(xpander_ecmp_throughput_avg.keys(), xpander_ecmp_throughput_avg.values(), label='xpander-ecmp')
+  plt.plot(xpander_ecmp_throughput_avg.keys(), xpander_ecmp_throughput_avg.values(), label='xpander-hyb')
+
+  plt.title('Reproduction of Figure 10c')
+  plt.xlabel("% Active servers")
+  plt.ylabel("Avg throughput (GB)")
+  plt.legend(loc='upper left')
+  plt.savefig("10c.png")
 
 
 
