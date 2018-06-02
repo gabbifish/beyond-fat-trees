@@ -3,6 +3,7 @@ import sys
 import random
 import json
 import math
+import argparse
 from collections import defaultdict
 from mininet.topo import Topo
 from mininet.net import Mininet
@@ -179,38 +180,39 @@ def experiment_permute(net, flow_starts, x, num_seconds):
 def main():
         global debug
         debug = True
-        if len(sys.argv) < 4:
-            print "Usage: sudo python experiment.py [ftree|xpander] [ecmp|hyb] [active-servers|lambda|cli] param"
-            return
 
-        if sys.argv[1] == 'ftree':
+        parser = argparse.ArgumentParser(description=
+            'Replicate experiments from "Beyond Fat Trees without antennae, mirrors, and disco balls"')
+        parser.add_argument('topo', help='Topology to use: [ftree|xpander]')
+        parser.add_argument('routing', help='Routing strategy: [ecmpy|hyb]')
+        parser.add_argument('test', help='Test to run: [active-servers|lambda|cli')
+        parser.add_argument('num_steps', help='The number of intervals to use in graph', type=int)
+        args = parser.parse_args()
+
+        if args.topo == 'ftree':
             topo = FtreeTopo(8, 2)
-        elif sys.argv[1] == 'xpander':
+        elif args.topo == 'xpander':
             topo = XpanderTopo()
 
-        if sys.argv[2] == 'ecmp':
+        if args.routing == 'ecmp':
             controller = ECMP
-        elif sys.argv[2] == 'hyb':
+        elif args.routing  == 'hyb':
             controller = HYB
 
-        print "Running %s topo with %s controller" % (sys.argv[1], sys.argv[2])
+        print "Running %s topo with %s controller" % (args.topo, args.routing)
         net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=controller)
 
         net.start()
         sleep(3)
 
-        if sys.argv[3] == 'cli':
+        if args.test == 'cli':
             CLI(net)
             net.stop()
             return
 
         try:
-            # If no param passed in as part of active-servers or lambda, this is a problem:
-            if len(sys.argv) < 5:
-                print "A parameter must be passed in following [active-servers|cli]"
-
             # For graphs 10(a) and 10(c)
-            if sys.argv[3] == "active-servers":
+            if args.test == "active-servers":
                 flow_starts = 32
                 num_steps = int(sys.argv[4]) # Distance between active-servers fractions
                 num_seconds = 5
@@ -220,10 +222,8 @@ def main():
                     experiment_permute(net, flow_starts, frac, num_seconds)
                 # experiment_active_server(net) 
             # For graphs 11(a) and 11(c)
-            elif sys.argv[3] == "lambda":
+            elif args.test == "lambda":
                 experiment_lambda(net) 
-            else:
-                print "Please enter \"active-servers\" or \"lambda\' as the second argument."
 
             net.stop()
         except: # Make sure to shut down mininet!
