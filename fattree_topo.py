@@ -18,6 +18,7 @@ from mininet.topo import Topo
 
 class FtreeTopo(Topo):
 
+    name = "ftree"
     nport  = 4     # Number of ports, even number.
     nlayer = 2     # Number of switch layers.
 
