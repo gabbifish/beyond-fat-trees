@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import json
 import itertools
 import re
@@ -13,8 +15,10 @@ debug = None
 DATA_DIR = "perm_output/"
 THROUGHPUT_IDX = 8
 INTERVAL_IDX = 6
+FRAC_RE = '_*_*frac_(\d+)*'
+LAMBDA_RE = '_*_*lambda_(\d+)*'
 
-def readThroughputFromCSV(arr, filename, idx):
+def readIperfParamFromCSV(arr, filename, idx):
   # CSV headers:
   # 0 = timestamp
   # 1 = source_address
@@ -44,28 +48,30 @@ def computeAllThroughputAvgs(avg_dict, rescale_to_MB=False):
     if rescale_to_MB:
       avg_dict[key] /= math.pow(10, 6) # Divide by 10^6 to get megabytes
 
-def generate10(graph_name):
-  # Maps storing mapping of active server fraction [key] to average throughput 10(a) OR FCT 10(c) [value]
+def generate(graph_name):
+  # Maps storing mapping of active server fraction or load [key] to average throughput (a) OR FCT (c) [value]
   ftree_ecmp_avg = defaultdict(lambda: [])
   xpander_ecmp_avg = defaultdict(lambda: [])
   xpander_hyb_avg = defaultdict(lambda: [])
   # Iterate over each topology. 
   for filename in os.listdir(DATA_DIR):
-    m = re.search('_*_*frac_(\d+)*', filename)
+    regex =  FRAC_RE if '10' in graph_name else LAMBDA_RE
+    m = re.search(regex, filename)
     if m is None:
       continue # ignore improperly formatted file
-    frac = m.group(1)
+    xval = m.group(1)
     
     avg_list = None
-    if filename.startswith("ftree_ecmp_frac"): 
-      avg_list = ftree_ecmp_avg[frac]
-    if filename.startswith("xpander_ecmp_frac"): 
-      avg_list = xpander_ecmp_avg[frac]
-    if filename.startswith("xpander_hyb_frac"): 
-      avg_list = xpander_hyb_avg[frac]
+    xlabel = 'frac' if '10' in graph_name else 'lambda'
+    if filename.startswith("ftree_ecmp_" + xlabel): 
+      avg_list = ftree_ecmp_avg[xval]
+    if filename.startswith("xpander_ecmp_" + xlabel): 
+      avg_list = xpander_ecmp_avg[xval]
+    if filename.startswith("xpander_hyb_" + xlabel): 
+      avg_list = xpander_hyb_avg[xval]
     # Iterate over each file corresponding to a certain fraction, get all bandwidth measurements.
-    idx = INTERVAL_IDX if graph_name == "10a" else THROUGHPUT_IDX
-    readThroughputFromCSV(avg_list, filename, idx) 
+    idx = INTERVAL_IDX if 'a' in graph_name else THROUGHPUT_IDX
+    readIperfParamFromCSV(avg_list, filename, idx) 
 
   generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
 
@@ -84,7 +90,7 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
   # plt.figure()
   plt.plot(ftree_ecmp_avg.keys(), ftree_ecmp_avg.values(), label='ftree-ecmp')
   plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-ecmp')
-  plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-hyb')
+  plt.plot(xpander_hyb_avg.keys(), xpander_hyb_avg.values(), label='xpander-hyb')
 
   plt.title("Reproduction of Figure %s" % (graph_name))
   if "10" in graph_name:
@@ -112,17 +118,11 @@ def main():
   global debug
   debug = True
   if len(sys.argv) < 2:
-    print "Usage: sudo python experiment.py [10a|10c|11a|11c]"
+    print "Usage: sudo python analysis.py [10a|10c|11a|11c]"
     return
 
-  if "10" in sys.argv[1]:
-    generate10(sys.argv[1])
-
-  if sys.argv[1] == "11a":
-    return
-
-  if sys.argv[1] == "11c":
-    return
+  graph_name = sys.argv[1]
+  generate(graph_name)
 
 if __name__ == "__main__":
     main()
