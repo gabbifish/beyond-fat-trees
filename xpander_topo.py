@@ -15,11 +15,9 @@ random.seed(1025)
 
 class XpanderTopo(Topo):
 
-    def __init__(self, n_hosts=130, n_hosts_per_rack=5, n_ports_per_switch=2, k_lift=2):
+    def __init__(self, n_hosts=32, n_switches=8, n_initial_switches=4, k_lift=2):
 
-        self.n_hosts_per_rack = n_hosts_per_rack
-        n_switches = int(n_hosts/n_hosts_per_rack)
-        n_initial_switches = n_ports_per_switch+1
+        self.n_hosts_per_rack = int(n_hosts/n_switches) 
         n_lifts = int(math.log(n_switches/n_initial_switches, k_lift))
 
         print "Creating an initial complete graph of", n_initial_switches, "switches"
