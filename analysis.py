@@ -91,7 +91,11 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
   xpander_ecmp_avg = OrderedDict(sorted(xpander_ecmp_avg.items()))
   xpander_hyb_avg = OrderedDict(sorted(xpander_hyb_avg.items()))
 
-  # plt.figure()
+  if debug:
+    print "ftree_ecmp_avg", ftree_ecmp_avg
+    print "xpander_ecmp_avg", xpander_ecmp_avg
+    print "xpander_hyb_avg", xpander_hyb_avg
+
   plt.plot(ftree_ecmp_avg.keys(), ftree_ecmp_avg.values(), label='ftree-ecmp')
   plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-ecmp')
   plt.plot(xpander_hyb_avg.keys(), xpander_hyb_avg.values(), label='xpander-hyb')
