@@ -49,7 +49,7 @@ FLOWLET_DELTA_MICROSEC = 50
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
 routing_strategy = 'HYB'
 
-Q_THRESH = 100000 # 100KB
+Q_THRESH = 50000 # 50KB
 
 G = None
 filename = 'pox/ext/graph.json'
@@ -257,12 +257,13 @@ class Tutorial (object):
         (old_time, nbytes_sent, path) = flowlet_map[fhash]
         new_time = datetime.now()
         
-        if new_time > old_time + timedelta(microseconds=FLOWLET_DELTA_MICROSEC):
+        if new_time > old_time + timedelta(milliseconds=FLOWLET_DELTA_MICROSEC):
           # start a new flowlet and choose a different path
           routing_alg = 'ecmp'
           if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
             routing_alg = 'vlb'
           path = get_path(self.dpid, target_id, routing_alg)
+          log.info("new flowlet")
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
 
