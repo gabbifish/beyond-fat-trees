@@ -15,11 +15,11 @@ random.seed(1025)
 
 class XpanderTopo(Topo):
 
-    def __init__(self, n_hosts=130, n_hosts_per_rack=5, n_ports_per_switch=2, k_lift=2):
+    name = "xpander"
 
-        self.n_hosts_per_rack = n_hosts_per_rack
-        n_switches = int(n_hosts/n_hosts_per_rack)
-        n_initial_switches = n_ports_per_switch+1
+    def __init__(self, n_hosts=32, n_switches=8, n_initial_switches=4, k_lift=2):
+
+        self.n_hosts_per_rack = int(n_hosts/n_switches) 
         n_lifts = int(math.log(n_switches/n_initial_switches, k_lift))
 
         print "Creating an initial complete graph of", n_initial_switches, "switches"
@@ -90,7 +90,7 @@ class XpanderTopo(Topo):
                 self.addLink(host, str(n), port1=1025, port2=h)
 
     def dump_graph_to_file(self, G):
-        filename = 'graph.json'
+        filename = 'xpander.json'
         adj_data = json_graph.adjacency_data(G)
         with open(filename, 'w') as fp:
             json.dump(adj_data, fp)
