@@ -22,6 +22,7 @@ from subprocess import Popen, PIPE
 from time import sleep
 import itertools
 import traceback
+import re
 
 random.seed(1025)
 debug = None
@@ -83,7 +84,10 @@ def experiment_permute(net, flow_starts, x, num_seconds=2, printFrac=True):
                 print "    on %s running command: %s" % (src.name, src_cmd)
             src.sendCmd(src_cmd)
             src.waitOutput(verbose=True)
-            pid = int(src.cmd('echo $!'))
+            
+            pid_line = src.cmd('echo $!')
+            m = re.search('(\d+)', pid_line)
+            pid = int(m.group(1))
             server_to_iperf_pids[src].append(pid)
 
         # Wait one second after iperf commands are launched.
@@ -117,7 +121,7 @@ def main():
             'Replicate experiments from "Beyond Fat Trees without antennae, mirrors, and disco balls"')
         parser.add_argument('topo', help='Topology to use: [ftree|xpander]')
         parser.add_argument('routing', help='Routing strategy: [ecmpy|hyb]')
-        parser.add_argument('test', help='Test to run: [active-servers|lambda|cli')
+        parser.add_argument('test', help='Test to run: [active-servers|lambda|cli]')
         parser.add_argument('num_steps', help='The number of intervals to use in graph',
             type=int, default=10)
         args = parser.parse_args()

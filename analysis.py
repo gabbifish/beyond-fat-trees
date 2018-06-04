@@ -44,6 +44,9 @@ def readIperfParamFromCSV(arr, filename, idx):
 
 def computeAllThroughputAvgs(avg_dict, rescale_to_MB=False):
   for (key, value) in avg_dict.iteritems():
+    if len(value) == 0:
+      avg_dict.pop(key)
+      return
     avg_dict[key] = sum(value) / len(value)
     if rescale_to_MB:
       avg_dict[key] /= math.pow(10, 6) # Divide by 10^6 to get megabytes
@@ -78,6 +81,7 @@ def generate(graph_name):
 def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg):
   # Now, compute average throughput for each fraction's corresponding throughput list.
   rescale_to_MB = True if "c" in graph_name else False
+
   computeAllThroughputAvgs(ftree_ecmp_avg, rescale_to_MB)
   computeAllThroughputAvgs(xpander_ecmp_avg, rescale_to_MB)
   computeAllThroughputAvgs(xpander_hyb_avg, rescale_to_MB)
@@ -87,7 +91,11 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
   xpander_ecmp_avg = OrderedDict(sorted(xpander_ecmp_avg.items()))
   xpander_hyb_avg = OrderedDict(sorted(xpander_hyb_avg.items()))
 
-  # plt.figure()
+  if debug:
+    print "ftree_ecmp_avg", ftree_ecmp_avg
+    print "xpander_ecmp_avg", xpander_ecmp_avg
+    print "xpander_hyb_avg", xpander_hyb_avg
+
   plt.plot(ftree_ecmp_avg.keys(), ftree_ecmp_avg.values(), label='ftree-ecmp')
   plt.plot(xpander_ecmp_avg.keys(), xpander_ecmp_avg.values(), label='xpander-ecmp')
   plt.plot(xpander_hyb_avg.keys(), xpander_hyb_avg.values(), label='xpander-hyb')
@@ -105,7 +113,7 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
 
   # Scale y axis appropriately
   if "a" in graph_name:
-    plt.ylim(ymax=100)  
+    plt.ylim(ymax=20)  
     plt.ylim(ymin=0)  
   else:
     plt.ylim(ymax=1.5)  
