@@ -59,7 +59,7 @@ def generate(graph_name):
     m = re.search(regex, filename)
     if m is None:
       continue # ignore improperly formatted file
-    xval = m.group(1)
+    xval = int(m.group(1))
     
     avg_list = None
     xlabel = 'frac' if '10' in graph_name else 'lambda'
