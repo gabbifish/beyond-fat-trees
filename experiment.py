@@ -54,8 +54,9 @@ def experiment_permute(net, flow_starts, x, trial, num_seconds=1, printFrac=True
             # (NOTE: for now we will just be using the mean of 2.4MB per flow)
             flow_size = '100K'
 
-            print "  Running %d flows of %s bytes each from %s to %s" \
-                % (num_flows_per_server, flow_size, src.name, dst.name)
+            if debug:
+                print "  Running %d flows of %s bytes each from %s to %s" \
+                    % (num_flows_per_server, flow_size, src.name, dst.name)
 
             port = 5001 + second # scheme for ports: open ports second by second
             output_file = "perm_output/%s_%s_%s_%d_s_%d_src_%s_dst_%s_trial_%d" % \

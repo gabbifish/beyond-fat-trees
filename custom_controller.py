@@ -257,12 +257,13 @@ class Tutorial (object):
         (old_time, nbytes_sent, path) = flowlet_map[fhash]
         new_time = datetime.now()
         
-        if new_time > old_time + timedelta(microseconds=FLOWLET_DELTA_MICROSEC):
+        if new_time > old_time + timedelta(milliseconds=FLOWLET_DELTA_MICROSEC):
           # start a new flowlet and choose a different path
           routing_alg = 'ecmp'
           if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
             routing_alg = 'vlb'
           path = get_path(self.dpid, target_id, routing_alg)
+          log.info("new flowlet")
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
 

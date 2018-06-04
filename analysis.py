@@ -62,7 +62,7 @@ def generate(graph_name):
     m = re.search(regex, filename)
     if m is None:
       continue # ignore improperly formatted file
-    xval = m.group(1)
+    xval = int(m.group(1))
     
     avg_list = None
     xlabel = 'frac' if '10' in graph_name else 'lambda'
@@ -112,12 +112,12 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
     plt.ylabel("Avg throughput (MB)")
 
   # Scale y axis appropriately
-  # if "a" in graph_name:
-  #   plt.ylim(ymax=20)  
-  #   plt.ylim(ymin=0)  
-  # else:
-  #   plt.ylim(ymax=3)  
-  #   plt.ylim(ymin=0)  
+  if "a" in graph_name:
+    plt.ylim(ymax=20)  
+    plt.ylim(ymin=0)  
+  else:
+    plt.ylim(ymax=1.5)  
+    plt.ylim(ymin=0)  
 
   plt.legend(loc='upper right')
   plt.savefig("%s.png" % (graph_name))
