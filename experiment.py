@@ -137,45 +137,45 @@ def main():
         elif args.routing  == 'hyb':
             controller = HYB
 
+        print "Running %s topo with %s controller" % (args.topo, args.routing)
+        net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=controller)
+
+        net.start()
+        sleep(3)
+
+        if args.test == 'cli':
+            CLI(net)
+            net.stop()
+            return
+
         num_trials = int(args.num_trials)
 
-        for trial in range(0, num_trials):
-            print "Running %s topo with %s controller" % (args.topo, args.routing)
-            net = Mininet(topo=topo, host=CPULimitedHost, link = TCLink, controller=controller)
-
-            net.start()
-            sleep(3)
-
-            if args.test == 'cli':
-                CLI(net)
-                net.stop()
-                return
-
-            try:
-                # For graphs 10(a) and 10(c)
-                if args.test == "active-servers":
-                    flow_starts = 32
-                    num_steps = int(args.num_steps) # Number of intervals to test for
+        try:
+            # For graphs 10(a) and 10(c)
+            if args.test == "active-servers":
+                flow_starts = 32
+                num_steps = int(args.num_steps) # Number of intervals to test for
+                for trial in range(0, num_trials):
                     for x in range(1, num_steps, 1):
                         frac = float(x)/num_steps
                         print "Simulating experiment for active server fraction %f" % (frac)
                         experiment_permute(net, flow_starts, frac, trial)
-                    print "DONEEEEEE"
-                
-                # For graphs 11(a) and 11(c)
-                elif args.test == "lambda":
-                    print "lambda experiment"
-                    min_flow_starts = 10
-                    increment = 10
-                    max_flow_starts = min_flow_starts + increment*args.num_steps
+            
+            # For graphs 11(a) and 11(c)
+            elif args.test == "lambda":
+                print "lambda experiment"
+                min_flow_starts = 10
+                increment = 10
+                max_flow_starts = min_flow_starts + increment*args.num_steps
+                for trial in range(0, num_trials):
                     for flow_starts in range(min_flow_starts, max_flow_starts, increment):
                         print "Simulating experiment with a load (flow-starts per second) of %d" % (flow_starts)
                         experiment_permute(net, flow_starts, 0.31, trial, printFrac=False)
 
-                net.stop()
-            except: # Make sure to shut down mininet!
-                traceback.print_exc()
-                net.stop()
+            net.stop()
+        except: # Make sure to shut down mininet!
+            traceback.print_exc()
+            net.stop()
 
 if __name__ == "__main__":
     main()
