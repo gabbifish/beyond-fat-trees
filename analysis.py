@@ -113,10 +113,10 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
 
   # Scale y axis appropriately
   if "a" in graph_name:
-    plt.ylim(ymax=20)  
+    plt.ylim(ymax=3)  
     plt.ylim(ymin=0)  
   else:
-    plt.ylim(ymax=1.5)  
+    plt.ylim(ymax=5)  
     plt.ylim(ymin=0)  
 
   plt.legend(loc='upper right')
