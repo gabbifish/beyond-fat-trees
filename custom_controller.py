@@ -41,6 +41,9 @@ log = core.getLogger()
 # nbytes_sent is for switching from ECMP to VLB
 flowlet_map = {}
 
+# flow_hash of packet -> path
+old_paths = {}
+
 # if time between packets entering network from same flow
 # is greater than FLOWLET_DELTA_MICROSEC, then start a new flowlet
 FLOWLET_DELTA_MICROSEC = 50
@@ -49,7 +52,7 @@ FLOWLET_DELTA_MICROSEC = 50
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
 routing_strategy = 'HYB'
 
-Q_THRESH = 4000 # 100KB
+Q_THRESH = 4000 # 4KB, 1/25 of total flow size
 
 G = None
 filename = 'pox/ext/graph.json'
@@ -262,6 +265,7 @@ class Tutorial (object):
       print "Dest: " + str(packet.dst)
       print "Event port: " + str(packet_in.in_port)
       
+      path = None
       fhash = flow_hash(packet)
       if fhash not in flowlet_map:
         # this is the first time we are seeing this flow
@@ -269,8 +273,8 @@ class Tutorial (object):
         path = get_path(self.dpid, target_id, 'ecmp')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
         flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
-
-      elif packet_in.in_port == 1:
+        
+      elif packet_in.in_port in [1, 2, 3, 4]:
         # this packet was just received from a host
         # update time_last_pkt_seen and nbytes_sent
         (old_time, nbytes_sent, path) = flowlet_map[fhash]
@@ -281,14 +285,27 @@ class Tutorial (object):
           routing_alg = 'ecmp'
           if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
             routing_alg = 'vlb'
+          
+          old_paths[fhash] = path
           path = get_path(self.dpid, target_id, routing_alg)
           log.info("new flowlet")
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
 
+      # OMG JUST KEEP OLD PATH AROUND JIC EXCEPTION OCCURS
+
       path = flowlet_map[fhash][2]
+      next_hop_id = None
+      log.info("dpid is " + str(self.dpid))
+      try:
+        log.info("path is " + str(path))
+        next_hop_id = path[path.index(self.dpid) + 1]
+      except: # Fall back to old path if exception is thrown
+        path = old_paths[fhash]
+        log.info("old_path is " + str(path))
+        next_hop_id = path[path.index(self.dpid) + 1]
+
       log.critical('PATH:' + str(path))
-      next_hop_id = path[path.index(self.dpid) + 1]
       self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
