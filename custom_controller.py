@@ -49,7 +49,7 @@ FLOWLET_DELTA_MICROSEC = 50
 # can be either ECMP or HYB (HYB is a combination of ECMP and VLB)
 routing_strategy = 'HYB'
 
-Q_THRESH = 75000 # 100KB
+Q_THRESH = 4000 # 100KB
 
 G = None
 filename = 'pox/ext/graph.json'

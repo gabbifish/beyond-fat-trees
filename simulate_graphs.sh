@@ -8,10 +8,10 @@ mkdir perm_output
 # Make sure mininet state is clean and that no other process is running on port 6633.
 sudo mn -c
 
-# Run experiments for graphs 10a,c.
-sudo python experiment.py ftree ecmp active-servers 10 20
-sudo python experiment.py xpander ecmp active-servers 10 20
-sudo python experiment.py xpander hyb active-servers 10 20
+# # Run experiments for graphs 10a,c.
+sudo python experiment.py ftree ecmp both 10 10
+sudo python experiment.py xpander ecmp both 10 10
+sudo python experiment.py xpander hyb both 10 10
 
 # Generate graph 10a
 python analysis.py 10a
