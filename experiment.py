@@ -3,6 +3,7 @@ import sys
 import random
 import json
 import math
+import re
 import argparse
 from collections import defaultdict
 from mininet.topo import Topo
@@ -22,7 +23,6 @@ from subprocess import Popen, PIPE
 from time import sleep
 import itertools
 import traceback
-import re
 
 random.seed(1025)
 debug = None
@@ -38,7 +38,7 @@ def pairwise(iterable):
 # flow_starts: num flow-starts per second (across all servers)
 # x: fraction of active servers
 # num_seconds: the number of seconds to run simulation for
-def experiment_permute(net, flow_starts, x, trial, num_seconds=1, printFrac=True):
+def experiment_permute(net, flow_starts, x, trial=1, num_seconds=1, printFrac=True):
     # choose x fraction of servers as active
     num_active_servers = int(len(net.hosts) * x)
     active_servers = random.sample(net.hosts, num_active_servers)
@@ -83,7 +83,6 @@ def experiment_permute(net, flow_starts, x, trial, num_seconds=1, printFrac=True
                 print "    on %s running command: %s" % (src.name, src_cmd)
             src.sendCmd(src_cmd)
             src.waitOutput(verbose=True)
-            
             pid_line = src.cmd('echo $!')
             m = re.search('(\d+)', pid_line)
             pid = int(m.group(1))
@@ -120,7 +119,7 @@ def main():
             'Replicate experiments from "Beyond Fat Trees without antennae, mirrors, and disco balls"')
         parser.add_argument('topo', help='Topology to use: [ftree|xpander]')
         parser.add_argument('routing', help='Routing strategy: [ecmpy|hyb]')
-        parser.add_argument('test', help='Test to run: [active-servers|lambda|cli]')
+        parser.add_argument('test', help='Test to run: [active-servers|lambda|cli')
         parser.add_argument('num_steps', help='The number of intervals to use in graph',
             type=int, default=10)
         parser.add_argument('num_trials', help='The number of trials to run',
@@ -171,6 +170,13 @@ def main():
                     for flow_starts in range(min_flow_starts, max_flow_starts, increment):
                         print "Simulating experiment with a load (flow-starts per second) of %d" % (flow_starts)
                         experiment_permute(net, flow_starts, 0.31, trial, printFrac=False)
+
+            # To run a single permute experiment (for testing/development purposes)
+            elif args.test == "custom":
+                frac = 0.31
+                flow_starts = 32
+                print "Running Permute(%f) with %d flow_starts" % (frac, flow_starts)
+                experiment_permute(net, flow_starts, frac)
 
             net.stop()
         except: # Make sure to shut down mininet!

@@ -41,6 +41,9 @@ log = core.getLogger()
 # nbytes_sent is for switching from ECMP to VLB
 flowlet_map = {}
 
+# flow_hash of packet -> path
+old_paths = {}
+
 # if time between packets entering network from same flow
 # is greater than FLOWLET_DELTA_MICROSEC, then start a new flowlet
 FLOWLET_DELTA_MICROSEC = 50
@@ -177,6 +180,21 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
 
+    self.npackets = 0
+    self.switchlog = 'pox/ext/switchlogs/switchlog_%s_%s_%d' \
+      % (topo, routing_strategy, self.dpid)
+    # initial write to create a new file or overwrite existing file
+    self.log_packet_stats(True)
+
+  def log_packet_stats(self, overwrite_file=False):
+    data = '%s,%d\n' \
+      % (str(datetime.now()), self.npackets)
+
+    flags = 'a'
+    if overwrite_file:
+      flags = 'w+' 
+    with open(self.switchlog, flags) as fp:
+      fp.write(data)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -210,6 +228,10 @@ class Tutorial (object):
     # sending it (len(packet_in.data) should be == packet_in.total_len)).
 
   def route_packet (self, packet, packet_in):
+      self.npackets += 1
+      if self.npackets % 100 == 0:
+        self.log_packet_stats()
+
       # Get destination IP address of packet
       ipdst = None
       arpp = packet.find('arp')
@@ -226,7 +248,7 @@ class Tutorial (object):
       if self.dpid == target_id:
         # packet dest is host attached to this id
         # hosts are attached to their switch via port 1, so send out port 1
-        log.info("target host is attached to this switch")
+        # log.info("target host is attached to this switch")
         host_id = ip_to_host_id(ipdst)
         self.resend_packet(packet_in, host_id)
         return
@@ -243,7 +265,6 @@ class Tutorial (object):
       print "Dest: " + str(packet.dst)
       print "Event port: " + str(packet_in.in_port)
       
-      old_path = None
       path = None
       fhash = flow_hash(packet)
       if fhash not in flowlet_map:
@@ -264,7 +285,8 @@ class Tutorial (object):
           routing_alg = 'ecmp'
           if routing_strategy == 'HYB' and nbytes_sent > Q_THRESH:
             routing_alg = 'vlb'
-          old_path = path
+          
+          old_paths[fhash] = path
           path = get_path(self.dpid, target_id, routing_alg)
           log.info("new flowlet")
 
@@ -279,8 +301,11 @@ class Tutorial (object):
         log.info("path is " + str(path))
         next_hop_id = path[path.index(self.dpid) + 1]
       except: # Fall back to old path if exception is thrown
-        log.info("old_path is " + str(old_path))
-        next_hop_id = old_path[old_path.index(self.dpid) + 1]
+        path = old_paths[fhash]
+        log.info("old_path is " + str(path))
+        next_hop_id = path[path.index(self.dpid) + 1]
+
+      log.critical('PATH:' + str(path))
       self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
@@ -303,7 +328,7 @@ class Tutorial (object):
       self.route_packet(packet, packet_in)
 
 
-def launch (routing=None):
+def launch (routing=None, topo_name='xpander'):
   """
   Starts the component
   """
@@ -314,6 +339,8 @@ def launch (routing=None):
   
   global routing_strategy
   routing_strategy = routing
+  global topo
+  topo = topo_name
   log.info('Controller is using routing strategy %s' % routing_strategy)
 
   core.openflow.addListenerByName("ConnectionUp", start_switch)

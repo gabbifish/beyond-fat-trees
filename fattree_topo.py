@@ -121,4 +121,4 @@ class FtreeTopo(Topo):
         with open(filename, 'w') as fp:
             json.dump(adj_data, fp)
 
-topos = { 'ftree' : (lambda: FtreeTopo(8, 3)) }
+topos = { 'ftree' : (lambda: FtreeTopo(8, 2)) }
