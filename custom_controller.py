@@ -184,13 +184,14 @@ class Tutorial (object):
     self.log_packet_stats(True)
 
   def log_packet_stats(self, overwrite_file=False):
-    time = datetime.now()
+    data = '%s,%d\n' \
+      % (str(datetime.now()), self.npackets)
+
     flags = 'a'
     if overwrite_file:
-      flags = 'w+'
-    
+      flags = 'w+' 
     with open(self.switchlog, flags) as fp:
-      fp.write(str(time) + ',' + str(self.npackets) +'\n')
+      fp.write(data)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -225,7 +226,7 @@ class Tutorial (object):
 
   def route_packet (self, packet, packet_in):
       self.npackets += 1
-      if self.npackets % 10 == 0:
+      if self.npackets % 100 == 0:
         self.log_packet_stats()
 
       # Get destination IP address of packet
@@ -244,7 +245,7 @@ class Tutorial (object):
       if self.dpid == target_id:
         # packet dest is host attached to this id
         # hosts are attached to their switch via port 1, so send out port 1
-        log.info("target host is attached to this switch")
+        # log.info("target host is attached to this switch")
         host_id = ip_to_host_id(ipdst)
         self.resend_packet(packet_in, host_id)
         return
@@ -286,6 +287,7 @@ class Tutorial (object):
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
 
       path = flowlet_map[fhash][2]
+      log.critical('PATH:' + str(path))
       next_hop_id = path[path.index(self.dpid) + 1]
       self.resend_packet(packet_in, next_hop_id)
 

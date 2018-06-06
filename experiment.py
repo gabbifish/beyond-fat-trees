@@ -3,6 +3,7 @@ import sys
 import random
 import json
 import math
+import re
 import argparse
 from collections import defaultdict
 from mininet.topo import Topo
@@ -37,7 +38,7 @@ def pairwise(iterable):
 # flow_starts: num flow-starts per second (across all servers)
 # x: fraction of active servers
 # num_seconds: the number of seconds to run simulation for
-def experiment_permute(net, flow_starts, x, trial, num_seconds=1, printFrac=True):
+def experiment_permute(net, flow_starts, x, trial=1, num_seconds=1, printFrac=True):
     # choose x fraction of servers as active
     num_active_servers = int(len(net.hosts) * x)
     active_servers = random.sample(net.hosts, num_active_servers)
