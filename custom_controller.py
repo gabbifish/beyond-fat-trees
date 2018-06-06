@@ -301,9 +301,9 @@ class Tutorial (object):
         log.info("path is " + str(path))
         next_hop_id = path[path.index(self.dpid) + 1]
       except: # Fall back to old path if exception is thrown
-        path = old_paths[fhash]
-        log.info("old_path is " + str(path))
-        next_hop_id = path[path.index(self.dpid) + 1]
+        old_path = old_paths[fhash]
+        log.info("old_path is " + str(old_path))
+        next_hop_id = old_path[old_path.index(self.dpid) + 1]
 
       log.critical('PATH:' + str(path))
       self.resend_packet(packet_in, next_hop_id)
