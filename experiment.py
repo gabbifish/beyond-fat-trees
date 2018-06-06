@@ -37,7 +37,7 @@ def pairwise(iterable):
 # flow_starts: num flow-starts per second (across all servers)
 # x: fraction of active servers
 # num_seconds: the number of seconds to run simulation for
-def experiment_permute(net, flow_starts, x, num_seconds=2, printFrac=True):
+def experiment_permute(net, flow_starts, x, trial, num_seconds=1, printFrac=True):
     # choose x fraction of servers as active
     num_active_servers = int(len(net.hosts) * x)
     active_servers = random.sample(net.hosts, num_active_servers)
@@ -46,7 +46,6 @@ def experiment_permute(net, flow_starts, x, num_seconds=2, printFrac=True):
 
     # server -> pid of iperf client processes (so we can wait for process to finish)
     server_to_iperf_pids = defaultdict(list)
-
     for second in range(0, num_seconds):
         # for each src/dest pair in active server permutation
         for src, dst in pairwise(active_servers):
@@ -59,11 +58,11 @@ def experiment_permute(net, flow_starts, x, num_seconds=2, printFrac=True):
                     % (num_flows_per_server, flow_size, src.name, dst.name)
 
             port = 5001 + second # scheme for ports: open ports second by second
-            output_file = "perm_output/%s_%s_%s_%d_s_%d_src_%s_dst_%s" % \
+            output_file = "perm_output/%s_%s_%s_%d_s_%d_src_%s_dst_%s_trial_%d" % \
                 (net.topo.name, net.controller.name,
                 ('frac' if printFrac else 'lambda'),
                 (int(100*x) if printFrac else flow_starts),
-                second, src.IP(), dst.IP())
+                second, src.IP(), dst.IP(), trial)
             num_bytes_per_buffer = "8K"
 
             # run iperf server on second server
@@ -122,6 +121,8 @@ def main():
         parser.add_argument('test', help='Test to run: [active-servers|lambda|cli')
         parser.add_argument('num_steps', help='The number of intervals to use in graph',
             type=int, default=10)
+        parser.add_argument('num_trials', help='The number of trials to run',
+            type=int, default=5)
         args = parser.parse_args()
 
         if args.topo == 'ftree':
@@ -145,15 +146,18 @@ def main():
             net.stop()
             return
 
+        num_trials = int(args.num_trials)
+
         try:
             # For graphs 10(a) and 10(c)
             if args.test == "active-servers":
                 flow_starts = 32
                 num_steps = int(args.num_steps) # Number of intervals to test for
-                for x in range(1, num_steps, 1):
-                    frac = float(x)/num_steps
-                    print "Simulating experiment for active server fraction %f" % (frac)
-                    experiment_permute(net, flow_starts, frac)
+                for trial in range(0, num_trials):
+                    for x in range(1, num_steps, 1):
+                        frac = float(x)/num_steps
+                        print "Simulating experiment for active server fraction %f" % (frac)
+                        experiment_permute(net, flow_starts, frac, trial)
             
             # For graphs 11(a) and 11(c)
             elif args.test == "lambda":
@@ -161,9 +165,10 @@ def main():
                 min_flow_starts = 10
                 increment = 10
                 max_flow_starts = min_flow_starts + increment*args.num_steps
-                for flow_starts in range(min_flow_starts, max_flow_starts, increment):
-                    print "Simulating experiment with a load (flow-starts per second) of %d" % (flow_starts)
-                    experiment_permute(net, flow_starts, 0.31, printFrac=False)
+                for trial in range(0, num_trials):
+                    for flow_starts in range(min_flow_starts, max_flow_starts, increment):
+                        print "Simulating experiment with a load (flow-starts per second) of %d" % (flow_starts)
+                        experiment_permute(net, flow_starts, 0.31, trial, printFrac=False)
 
             # To run a single permute experiment (for testing/development purposes)
             elif args.test == "custom":

@@ -2,23 +2,22 @@
 # Script for running tests and generating graphs.
 
 # Clear previous perm_output 
-cd perm_output
-sudo rm *
-cd ..
+sudo rm -rf perm_output
+mkdir perm_output
 
 # Make sure mininet state is clean and that no other process is running on port 6633.
 sudo mn -c
 
 # Run experiments for graphs 10a,c.
-# sudo python experiment.py ftree ecmp active-servers 10
-# sudo python experiment.py xpander ecmp active-servers 10
-# sudo python experiment.py xpander hyb active-servers 10
+sudo python experiment.py ftree ecmp active-servers 10 20
+sudo python experiment.py xpander ecmp active-servers 10 20
+sudo python experiment.py xpander hyb active-servers 10 20
 
 # Generate graph 10a
-# python analysis.py 10a
+python analysis.py 10a
 
 # Generate graph 10c
-# python analysis.py 10c
+python analysis.py 10c
 
 # Run experiments for graphs 11a,c.
 sudo python experiment.py ftree ecmp lambda 10

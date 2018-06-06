@@ -45,8 +45,8 @@ def readIperfParamFromCSV(arr, filename, idx):
 def computeAllThroughputAvgs(avg_dict, rescale_to_MB=False):
   for (key, value) in avg_dict.iteritems():
     if len(value) == 0:
-      avg_dict.pop(key)
-      return
+      avg_dict[key] = 0
+      continue
     avg_dict[key] = sum(value) / len(value)
     if rescale_to_MB:
       avg_dict[key] /= math.pow(10, 6) # Divide by 10^6 to get megabytes
@@ -113,10 +113,10 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
 
   # Scale y axis appropriately
   if "a" in graph_name:
-    plt.ylim(ymax=20)  
+    plt.ylim(ymax=3)  
     plt.ylim(ymin=0)  
   else:
-    plt.ylim(ymax=1.5)  
+    plt.ylim(ymax=5)  
     plt.ylim(ymin=0)  
 
   plt.legend(loc='upper right')
