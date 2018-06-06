@@ -177,6 +177,20 @@ class Tutorial (object):
     # which switch port (keys are MACs, values are ports).
     self.mac_to_port = {}
 
+    self.npackets = 0
+    self.switchlog = 'pox/ext/switchlogs/switchlog_%s_%s_%d' \
+      % (topo, routing_strategy, self.dpid)
+    # initial write to create a new file or overwrite existing file
+    self.log_packet_stats(True)
+
+  def log_packet_stats(self, overwrite_file=False):
+    time = datetime.now()
+    flags = 'a'
+    if overwrite_file:
+      flags = 'w+'
+    
+    with open(self.switchlog, flags) as fp:
+      fp.write(str(time) + ',' + str(self.npackets) +'\n')
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -210,6 +224,10 @@ class Tutorial (object):
     # sending it (len(packet_in.data) should be == packet_in.total_len)).
 
   def route_packet (self, packet, packet_in):
+      self.npackets += 1
+      if self.npackets % 10 == 0:
+        self.log_packet_stats()
+
       # Get destination IP address of packet
       ipdst = None
       arpp = packet.find('arp')
@@ -291,7 +309,7 @@ class Tutorial (object):
       self.route_packet(packet, packet_in)
 
 
-def launch (routing=None):
+def launch (routing=None, topo_name='xpander'):
   """
   Starts the component
   """
@@ -302,6 +320,8 @@ def launch (routing=None):
   
   global routing_strategy
   routing_strategy = routing
+  global topo
+  topo = topo_name
   log.info('Controller is using routing strategy %s' % routing_strategy)
 
   core.openflow.addListenerByName("ConnectionUp", start_switch)
