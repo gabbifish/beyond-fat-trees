@@ -1,7 +1,7 @@
 # Xpander Topology
 
 # Usage:
-# $ sudo mn --custom xpander_topo.py --topo xpander --controller=remote
+# $ sudo mn --custom xpander_topo.py --topo xpander --controller=remote,ip=127.0.0.1,port=6633
 
 import os
 import math

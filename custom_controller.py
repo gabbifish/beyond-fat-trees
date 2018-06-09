@@ -181,20 +181,12 @@ class Tutorial (object):
     self.mac_to_port = {}
 
     self.npackets = 0
-    self.switchlog = 'pox/ext/switchlogs/switchlog_%s_%s_%d' \
-      % (topo, routing_strategy, self.dpid)
-    # initial write to create a new file or overwrite existing file
-    self.log_packet_stats(True)
 
-  def log_packet_stats(self, overwrite_file=False):
-    data = '%s,%d\n' \
-      % (str(datetime.now()), self.npackets)
+  def log_packet_stats(self):
+    data = 'SWITCH%d:%s,%d' \
+      % (self.dpid, str(datetime.now()), self.npackets)
 
-    flags = 'a'
-    if overwrite_file:
-      flags = 'w+' 
-    with open(self.switchlog, flags) as fp:
-      fp.write(data)
+    log.critical(data)
 
   def resend_packet (self, packet_in, out_port):
     """
@@ -273,6 +265,7 @@ class Tutorial (object):
         path = get_path(self.dpid, target_id, 'ecmp')
         # fhash -> (time_last_pkt_seen, nbytes_sent, path)
         flowlet_map[fhash] = (datetime.now(), ipp.iplen, path)
+        log.critical('PATH:' + str(path))
         
       elif packet_in.in_port in [1, 2, 3, 4]:
         # this packet was just received from a host
@@ -291,12 +284,11 @@ class Tutorial (object):
           log.info("new flowlet")
 
         flowlet_map[fhash] = (new_time, nbytes_sent+ipp.iplen, path)
-
-      # OMG JUST KEEP OLD PATH AROUND JIC EXCEPTION OCCURS
+        log.critical('PATH:' + str(path))
 
       path = flowlet_map[fhash][2]
       next_hop_id = None
-      log.info("dpid is " + str(self.dpid))
+      # log.info("dpid is " + str(self.dpid))
       try:
         log.info("path is " + str(path))
         next_hop_id = path[path.index(self.dpid) + 1]
@@ -305,7 +297,6 @@ class Tutorial (object):
         log.info("old_path is " + str(old_path))
         next_hop_id = old_path[old_path.index(self.dpid) + 1]
 
-      log.critical('PATH:' + str(path))
       self.resend_packet(packet_in, next_hop_id)
 
   def _handle_PacketIn (self, event):
@@ -328,7 +319,7 @@ class Tutorial (object):
       self.route_packet(packet, packet_in)
 
 
-def launch (routing=None, topo_name='xpander'):
+def launch (routing='ECMP'):
   """
   Starts the component
   """
@@ -339,8 +330,6 @@ def launch (routing=None, topo_name='xpander'):
   
   global routing_strategy
   routing_strategy = routing
-  global topo
-  topo = topo_name
   log.info('Controller is using routing strategy %s' % routing_strategy)
 
   core.openflow.addListenerByName("ConnectionUp", start_switch)

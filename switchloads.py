@@ -6,64 +6,57 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 
-FILEPATH = 'switchlogs/'
 
-def get_total_npackets(filename):
-    with open(FILEPATH+filename, 'r') as fp:
-        lines = fp.readlines()
-        timestamp, npackets = lines[-1].split(',')
-        return int(npackets)
+DIRPATH = ''
+# example log line...
+# CRITICAL:custom_controller:SWITCH<ID>:<datetime>,<npackets>
+def get_packet_counts(filename):
+    switchid_to_npackets = {}
+    with open(DIRPATH+filename, 'r') as fp:
+        line_start = 'CRITICAL:custom_controller:SWITCH'
+
+        for line in fp.readlines():
+            if line.startswith(line_start):
+                line = line[len(line_start):] # cut line to only relevant info
+                switchid_str = line[0:line.index(':')]
+                line = line[len(switchid_str)+ 1:]
+                switchid = int(switchid_str)
+                npackets = int(line.split(',')[1])
+                switchid_to_npackets[switchid] = npackets
+
+        return switchid_to_npackets
 
 def main():
-    ftree = []
-    xpander_ecmp = []
-    xpander_hyb = []
-    for filename in os.listdir(FILEPATH):
-        regex = r'switchlog_([a-zA-Z]+)_([a-zA-Z]+)_(\d+)'
-        m = re.search(regex, filename)
-        if m is None:
-            continue
-        topo = m.group(1)
-        routing = m.group(2)
-        switchid = int(m.group(3))
+    # dicts from switch id to total num packets
+    ftree_ecmp = get_packet_counts('ftree_ecmp.log')
+    xpander_ecmp = get_packet_counts('xpander_ecmp.log')
+    xpander_hyb = get_packet_counts('xpander_hyb.log')
 
-        print "looking at file", filename
-        npackets = get_total_npackets(filename)
-        print "npackets", npackets
+    # get array of values (npackets) from dicts
+    ftree_ecmp = [npackets for sid, npackets in ftree_ecmp.iteritems()]
+    xpander_ecmp = [npackets for sid, npackets in xpander_ecmp.iteritems()]
+    xpander_hyb = [npackets for sid, npackets in xpander_hyb.iteritems()]
 
-        if topo == 'ftree':
-            ftree.append(npackets)
-        elif routing == 'ECMP':
-            xpander_ecmp.append(npackets)
-        elif routing == 'HYB':
-            xpander_hyb.append(npackets)
-
-    print ftree
-    print xpander_ecmp
-    print xpander_hyb
-
-    # Sort all dicts in order of ascending keys
-    ftree_vals = sorted(ftree, reverse=True)
+    # Sort all arrays in order of descending values
+    ftree_vals = sorted(ftree_ecmp, reverse=True)
     xpander_ecmp_vals = sorted(xpander_ecmp, reverse=True)
     xpander_hyb_vals = sorted(xpander_hyb, reverse=True)
 
+    # Convert to numpy arrays
     ftree_x = np.array(range(len(ftree_vals)))
     xpander_ecmp_x = np.array(range(len(xpander_ecmp_vals)))
     xpander_hyb_x = np.array(range(len(xpander_hyb_vals)))
 
-    # plt.bar(ftree_x-0.2, ftree_vals, width=.2, label='ftree-ecmp', align='center')
-    # plt.bar(xpander_ecmp_x, xpander_ecmp_vals, width=.2, label='xpander-ecmp', align='center')
-    # plt.bar(xpander_hyb_x+0.2, xpander_hyb_vals, width=.2, label='xpander-hyb', align='center')
-
-    plt.plot(ftree_x, ftree_vals, label='ftree-ecmp')
-    plt.plot(xpander_ecmp_x, xpander_ecmp_vals, label='xpander-ecmp')
-    plt.plot(xpander_hyb_x, xpander_hyb_vals, label='xpander-hyb')
+    # Create bar graph
+    plt.bar(ftree_x-0.2, ftree_vals, width=.2, label='ftree-ecmp', align='center')
+    plt.bar(xpander_ecmp_x, xpander_ecmp_vals, width=.2, label='xpander-ecmp', align='center')
+    plt.bar(xpander_hyb_x+0.2, xpander_hyb_vals, width=.2, label='xpander-hyb', align='center')
 
     plt.title("Switch Work Loads")
     plt.legend(loc='upper right')
     plt.xlabel("Switch Rank")
     plt.ylabel("Number of packets")
-    plt.savefig("switchloads_line.png")
+    plt.savefig("switchloads.png")
 
 if __name__ == "__main__":
     main()

@@ -12,12 +12,9 @@ DIRPATH = ''
 
 def get_path_counts(filename):
     with open(DIRPATH+filename, 'r') as fp:
-        # path_len_counts = [len(line.split(',')) for line in fp.readlines()
-        #     if line.startswith('CRITICAL:custom_controller:PATH:')]
         line_start = 'CRITICAL:custom_controller:PATH:'
         path_lines = [line[len(line_start):] for line in fp.readlines()
             if line.startswith('CRITICAL:custom_controller:PATH:')]
-        # print path_lines
         path_len_counts = sorted([len(line.split(',')) for line in path_lines])
         return path_len_counts
 

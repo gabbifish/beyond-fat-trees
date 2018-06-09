@@ -37,8 +37,8 @@ def pairwise(iterable):
 # net: Mininet network
 # flow_starts: num flow-starts per second (across all servers)
 # x: fraction of active servers
-# num_seconds: the number of seconds to run simulation for
-def experiment_permute(net, flow_starts, x, trial=1, num_seconds=1, printFrac=True):
+# num_seconds: the number of seconds to start flows for
+def experiment_permute(net, flow_starts, x, trial=1, num_seconds=2, printFrac=True):
     # choose x fraction of servers as active
     num_active_servers = int(len(net.hosts) * x)
     active_servers = random.sample(net.hosts, num_active_servers)

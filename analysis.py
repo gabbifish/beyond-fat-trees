@@ -124,7 +124,7 @@ def generateGraph(graph_name, ftree_ecmp_avg, xpander_ecmp_avg, xpander_hyb_avg)
 
 def main():
   global debug
-  debug = True
+  debug = False
   if len(sys.argv) < 2:
     print "Usage: sudo python analysis.py [10a|10c|11a|11c]"
     return
